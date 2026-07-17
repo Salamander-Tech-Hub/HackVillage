@@ -341,7 +341,7 @@ UI work lives under `frontend/`; escrow, payouts, and schema changes live under 
 
 ## License
 
-This project is licensed under the terms of the [LICENSE](./LICENSE) file included in this repository.
+This project is licensed under the [MIT License](./LICENSE).
 
 ---
 
