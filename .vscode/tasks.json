@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "stage artifact removals",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"-u"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "commit feature ui api tests ci docs",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"feat(events): add organizer event create and edit forms",
+				"-m",
+				"feat(api): add validated draft event create and update endpoints",
+				"-m",
+				"test(events): cover organizer event creation and editing",
+				"-m",
+				"chore(ci): verify event workflows in GitHub Actions"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "push feature branch",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"-u",
+				"origin",
+				"feature/issue-6-organizer-create-edit-event-form"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "collect final git refs",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git status --short; git rev-parse --abbrev-ref HEAD; git rev-parse HEAD"
+			],
+			"isBackground": false
+		}
+	]
+}
