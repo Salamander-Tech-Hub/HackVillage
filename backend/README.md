@@ -48,11 +48,13 @@ Set at least:
 | `SMART_CONTRACT_ADDRESS` | Deployed escrow contract (stub ok locally) |
 | `RPC_URL` | Chain RPC endpoint |
 
+If `DATABASE_URL` is not set yet, `npm run db:seed` falls back to mock-data mode and still exits successfully after printing the seeded emails.
+
 Then:
 
 ```bash
 npm run db:migrate   # create/apply migrations
-npm run db:seed      # optional demo organizer + Prize Verified event
+npm run db:seed      # optional demo organizer, attendees, judge, and events
 npm run db:studio    # browse data in Prisma Studio
 ```
 
@@ -61,7 +63,7 @@ npm run db:studio    # browse data in Prisma Studio
 | `npm run db:generate` | Regenerate Prisma Client |
 | `npm run db:migrate` | Dev migrations against `backend/prisma/schema.prisma` |
 | `npm run db:push` | Push schema without a migration (prototyping only) |
-| `npm run db:seed` | Seed demo rows |
+| `npm run db:seed` | Seed demo organizer, attendees, judge, and events |
 | `npm test` | Unit tests (escrow/payout stubs live under `/tests`) |
 
 ## How frontend talks to backend

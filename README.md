@@ -293,7 +293,7 @@ NEXTAUTH_URL=http://localhost:3000
 
 ```bash
 npm run db:migrate
-npm run db:seed   # optional — demo organizer + Prize Verified event
+npm run db:seed   # optional — demo organizer, attendees, judge, and events
 npm run dev
 ```
 
@@ -317,9 +317,11 @@ HackVillage is installable as a PWA (manifest + service worker). The service wor
 
 Prisma schema lives at `backend/prisma/schema.prisma` and models events, escrow vaults, payouts, submissions, judging, and developer profiles.
 
+If the database is not ready yet, `npm run db:seed` still succeeds in mock-data mode and prints the seeded emails to the console.
+
 ```bash
 npm run db:migrate
-npm run db:seed   # optional — seeds demo events and profiles
+npm run db:seed   # optional — seeds demo events, profiles, and team data
 ```
 
 ---
