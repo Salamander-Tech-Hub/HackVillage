@@ -29,6 +29,26 @@ async function main() {
     },
   });
 
+  const judge = await prisma.user.upsert({
+    where: { email: "judge@hackvillage.local" },
+    update: {},
+    create: {
+      email: "judge@hackvillage.local",
+      name: "Demo Judge",
+      role: "JUDGE",
+    },
+  });
+
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@hackvillage.local" },
+    update: {},
+    create: {
+      email: "admin@hackvillage.local",
+      name: "Demo Administrator",
+      role: "ADMIN",
+    },
+  });
+
   const event = await prisma.event.upsert({
     where: { slug: "nairobi-climate-sprint" },
     update: {},
@@ -58,6 +78,8 @@ async function main() {
   console.log("Seeded:", {
     organizer: organizer.email,
     developer: developer.email,
+    judge: judge.email,
+    admin: admin.email,
     event: event.slug,
   });
 }
