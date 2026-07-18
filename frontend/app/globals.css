@@ -1,10 +1,10 @@
 :root {
-  --bg: #0b1f1a;
-  --bg-accent: #12352c;
+  --bg: #0173d4;
+  --bg-accent: rgba(1, 115, 212);
   --fg: #f4f7f5;
   --muted: #a8c0b6;
-  --brand: #d4a017;
-  --brand-ink: #0b1f1a;
+  --brand: #031b9f;
+  --brand-ink: #0173d4;
   --line: rgba(244, 247, 245, 0.12);
   --font-display: "Georgia", "Times New Roman", serif;
   --font-body: "Segoe UI", "Helvetica Neue", sans-serif;
@@ -19,7 +19,7 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 0%, #1a4d3e 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 20% 0%, #0173d4 0%, transparent 55%),
     radial-gradient(ellipse 70% 50% at 100% 100%, #0f2e26 0%, transparent 50%),
     var(--bg);
   color: var(--fg);
@@ -87,8 +87,8 @@ h1 {
 }
 
 .btn:hover {
-  border-color: rgba(212, 160, 23, 0.55);
-  background: rgba(18, 53, 44, 0.65);
+  border-color: rgba(1, 162, 242);
+  background: rgba(3, 27, 159);
 }
 
 .btn.primary {
@@ -99,5 +99,5 @@ h1 {
 }
 
 .btn.primary:hover {
-  background: #e0b12a;
+  background: #031b9f;
 }
