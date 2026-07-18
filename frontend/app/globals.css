@@ -577,6 +577,84 @@ h1 {
   outline-offset: -2px;
 }
 
+.row-actions {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.org-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.org-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.org-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.org-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.org-required {
+  color: #f5d78a;
+}
+
+.org-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.org-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: rgba(11, 31, 26, 0.7);
+  color: var(--fg);
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+}
+
+.org-input::placeholder {
+  color: rgba(168, 192, 182, 0.8);
+}
+
+.org-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.org-input[aria-invalid="true"] {
+  border-color: rgba(190, 70, 70, 0.8);
+}
+
+.org-textarea {
+  resize: vertical;
+  min-height: 8rem;
+}
+
+.org-error {
+  margin: 0;
+  color: #f4b8b8;
+  font-size: 0.8rem;
+}
+
+.org-form-actions {
+  display: inline-flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .org-detail-card {
   border: 1px solid var(--line);
   border-radius: 0.75rem;
@@ -591,6 +669,13 @@ h1 {
   flex-wrap: wrap;
   align-items: flex-start;
   margin-bottom: 1rem;
+}
+
+.org-detail-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .org-detail-grid {
@@ -662,5 +747,9 @@ button:focus-visible {
 
   .org-profile {
     margin-top: 0;
+  }
+
+  .org-form-grid {
+    grid-template-columns: 1fr;
   }
 }

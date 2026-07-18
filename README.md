@@ -287,6 +287,7 @@ SMART_CONTRACT_ADDRESS=0x...
 RPC_URL=https://...
 NEXTAUTH_SECRET=replace-with-a-long-random-string
 NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_ENABLE_MOCK_EVENTS=false
 ```
 
 ### Development
@@ -305,9 +306,27 @@ Useful scripts:
 |---|---|
 | `npm run dev` | Next.js dev server (`./frontend`) |
 | `npm run build` | Production build (enables PWA service worker) |
+| `npm run test:integration` | Organizer event flow integration tests |
 | `npm run db:migrate` / `db:seed` / `db:studio` | Prisma against `backend/prisma/schema.prisma` |
 | `npm test` | Unit tests |
 | `npm run typecheck` / `npm run lint` | CI-style checks |
+
+### Organizer Draft Event Flow
+
+Organizer dashboard routes include:
+
+- `/organizer/overview`
+- `/organizer/events`
+- `/organizer/events/new`
+- `/organizer/events/:id`
+- `/organizer/events/:id/edit`
+
+Draft event create and edit are backed by:
+
+- `POST /api/events`
+- `PATCH /api/events/:id`
+
+Both endpoints require authenticated organizer identity and enforce draft-stage validation rules on the server.
 
 ### Progressive Web App
 

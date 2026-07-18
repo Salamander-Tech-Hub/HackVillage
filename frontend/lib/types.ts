@@ -64,9 +64,27 @@ export interface ApiErrorResponse {
   code?: string;
 }
 
+export type FieldErrorMap = Record<string, string>;
+
+export interface ApiValidationErrorResponse {
+  message: string;
+  errors: FieldErrorMap;
+  code?: string;
+}
+
 export interface PaginatedEventsResponse {
   items: OrganizerEvent[];
   total: number;
   page?: number;
   pageSize?: number;
 }
+
+export interface DraftEventInput {
+  title: string;
+  problemStatement: string;
+  prizePoolKes: number;
+  startsAt: string;
+  endsAt: string;
+}
+
+export type DraftEventPatchInput = Partial<DraftEventInput>;

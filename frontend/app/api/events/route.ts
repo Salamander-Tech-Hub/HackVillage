@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
-import type { EventStatus as PrismaEventStatus } from "@prisma/client";
 import type {
+  ApiValidationErrorResponse,
+  DraftEventInput,
   EventsListResponse,
   OrganizerEvent,
-  EventStatus,
-  EscrowState,
-  ApiErrorResponse,
 } from "@/lib/types";
+import { parseCreateDraftInput } from "@/lib/eventDraftSchema";
+import {
+  buildUniqueSlug,
+  getPrismaOrThrow,
+  jsonError,
+  mapDbEventToOrganizerEvent,
+  parseMineFlag,
+  parseStatusFilter,
+  requireOrganizerAuth,
+} from "./_shared";
 
 // Force dynamic — this route reads from the DB and should not be cached.
 export const dynamic = "force-dynamic";
@@ -28,20 +36,18 @@ export async function GET(request: Request) {
   const statusFilter = parseStatusFilter(statusParam);
 
   try {
-    const authUser = mine ? await getAuthenticatedUser(request) : null;
-    if (mine && !authUser) {
-      return jsonError("Authentication required.", 401, "AUTH_REQUIRED");
-    }
-
-    if (mine && authUser && !isOrganizerRole(authUser.role)) {
-      return jsonError("Organizer role required.", 403, "FORBIDDEN");
+    let authUserId: string | null = null;
+    if (mine) {
+      const authResult = await requireOrganizerAuth(request);
+      if (!authResult.ok) return authResult.response;
+      authUserId = authResult.user.id;
     }
 
     const events = await loadFromDatabase({
       organizerId,
       statusFilter,
       mine: Boolean(mine),
-      authUserId: authUser?.id ?? null,
+      authUserId,
     });
 
     const response: EventsListResponse = {
@@ -59,19 +65,63 @@ export async function GET(request: Request) {
   }
 }
 
+export async function POST(request: Request) {
+  try {
+    const authResult = await requireOrganizerAuth(request);
+    if (!authResult.ok) return authResult.response;
+
+    const payload = (await request.json()) as unknown;
+    const parsed = parseCreateDraftInput(payload);
+    if (!parsed.ok) {
+      return NextResponse.json(
+        {
+          message: "Validation failed",
+          errors: parsed.errors,
+          code: "VALIDATION_FAILED",
+        } satisfies ApiValidationErrorResponse,
+        { status: 422 },
+      );
+    }
+
+    const data = parsed.data;
+    const prisma = await getPrismaOrThrow();
+    const slug = await buildUniqueSlug(data.title);
+
+    const created = await prisma.event.create({
+      data: {
+        slug,
+        title: data.title,
+        problemStatement: data.problemStatement,
+        prizePoolKes: data.prizePoolKes,
+        startsAt: new Date(data.startsAt),
+        endsAt: new Date(data.endsAt),
+        status: "DRAFT",
+        organizerId: authResult.user.id,
+      },
+      include: {
+        escrowVault: true,
+        _count: { select: { submissions: true } },
+      },
+    });
+
+    const event = mapDbEventToOrganizerEvent(created);
+    return NextResponse.json({ event }, { status: 201 });
+  } catch (error) {
+    return jsonError(
+      error instanceof Error ? error.message : "Unable to create event.",
+      500,
+      "EVENT_CREATE_FAILED",
+    );
+  }
+}
+
 async function loadFromDatabase(opts: {
   organizerId: string | null;
-  statusFilter: PrismaEventStatus[] | null;
+  statusFilter: import("@prisma/client").EventStatus[] | null;
   mine: boolean;
   authUserId: string | null;
 }): Promise<OrganizerEvent[]> {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL not configured");
-  }
-
-  // Dynamic import so a missing/broken Prisma client does not crash the
-  // whole route module at import time (we want the catch above to run).
-  const { prisma } = await import("@backend/lib/db");
+  const prisma = await getPrismaOrThrow();
 
   const rows = await prisma.event.findMany({
     where: {
@@ -88,96 +138,5 @@ async function loadFromDatabase(opts: {
     },
   });
 
-  return rows.map((row): OrganizerEvent => {
-    return {
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      problemStatement: row.problemStatement,
-      status: row.status as EventStatus,
-      prizePoolKes: Number(row.prizePoolKes),
-      startsAt: row.startsAt ? row.startsAt.toISOString() : null,
-      endsAt: row.endsAt ? row.endsAt.toISOString() : null,
-      location: null,
-      format: null,
-      registrationsCount: null,
-      submissionsCount: row._count.submissions,
-      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
-      escrow: row.escrowVault
-        ? {
-            state: row.escrowVault.state as EscrowState,
-            amountKes: Number(row.escrowVault.amountKes),
-            publicLedgerUrl: row.escrowVault.publicLedgerUrl ?? null,
-          }
-        : null,
-    };
-  });
-}
-
-function parseMineFlag(value: string | null): boolean | null {
-  if (value === null) return false;
-  if (value === "1" || value.toLowerCase() === "true") return true;
-  if (value === "0" || value.toLowerCase() === "false") return false;
-  return null;
-}
-
-function parseStatusFilter(value: string | null): PrismaEventStatus[] | null {
-  if (!value) return null;
-  const normalized = value
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => part.toUpperCase());
-
-  const valid: PrismaEventStatus[] = [];
-  for (const item of normalized) {
-    if (isPrismaEventStatus(item)) {
-      valid.push(item);
-    }
-  }
-  return valid.length > 0 ? valid : null;
-}
-
-function isPrismaEventStatus(value: string): value is PrismaEventStatus {
-  return (
-    value === "DRAFT" ||
-    value === "PENDING_ESCROW" ||
-    value === "PRIZE_VERIFIED" ||
-    value === "LIVE" ||
-    value === "JUDGING" ||
-    value === "CLOSED" ||
-    value === "ARCHIVED"
-  );
-}
-
-type AuthUser = { id: string; role: string };
-
-async function getAuthenticatedUser(request: Request): Promise<AuthUser | null> {
-  const userId = request.headers.get("x-hackvillage-user-id");
-  const userEmail = request.headers.get("x-hackvillage-user-email");
-  if (!userId && !userEmail) return null;
-
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL not configured");
-  }
-
-  const { prisma } = await import("@backend/lib/db");
-  const user = await prisma.user.findFirst({
-    where: userId ? { id: userId } : { email: userEmail ?? "" },
-    select: { id: true, role: true },
-  });
-
-  return user ? { id: user.id, role: user.role } : null;
-}
-
-function isOrganizerRole(role: string): boolean {
-  return role === "ORGANIZER" || role === "ADMIN";
-}
-
-function jsonError(message: string, status: number, code: string) {
-  const payload: ApiErrorResponse = {
-    error: message,
-    code,
-  };
-  return NextResponse.json(payload, { status });
+  return rows.map((row) => mapDbEventToOrganizerEvent(row));
 }

@@ -54,6 +54,11 @@ export default function OrganizerEventsPage() {
           <h1 className="dashboard-title">My Events</h1>
           <p className="lede">Events owned by your organizer account.</p>
         </div>
+        <div className="dashboard-header-actions">
+          <Link className="btn primary" href="/organizer/events/new">
+            + Create event
+          </Link>
+        </div>
       </header>
 
       {state.kind === "loading" ? <SkeletonTable /> : null}
@@ -109,9 +114,17 @@ export default function OrganizerEventsPage() {
                   <td className="num">{KES.format(event.prizePoolKes)}</td>
                   <td>{event.updatedAt ? DATE_FMT.format(new Date(event.updatedAt)) : "N/A"}</td>
                   <td className="col-actions">
-                    <Link className="btn btn-sm" href={toOrganizerEventHref(event)}>
-                      View event
-                    </Link>
+                    <div className="row-actions">
+                      <Link className="btn btn-sm" href={toOrganizerEventHref(event)}>
+                        View event
+                      </Link>
+                      <Link
+                        className="btn btn-sm"
+                        href={`/organizer/events/${encodeURIComponent(event.id)}/edit`}
+                      >
+                        Edit
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

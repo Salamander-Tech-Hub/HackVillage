@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { EventStatusPill } from "@/components/StatusPill";
 import { OrganizerApiError, getOrganizerEventById } from "@/lib/organizerApi";
 import type { OrganizerEvent } from "@/lib/types";
@@ -28,6 +29,7 @@ export default function OrganizerEventDetailPage({
 }: {
   params: { eventId: string };
 }) {
+  const searchParams = useSearchParams();
   const [state, setState] = useState<DetailState>({ kind: "loading" });
 
   const load = useCallback(async () => {
@@ -55,6 +57,18 @@ export default function OrganizerEventDetailPage({
           ← Back to My Events
         </Link>
       </div>
+
+      {searchParams.get("created") === "1" ? (
+        <div className="banner banner-info" role="status">
+          Draft event created successfully.
+        </div>
+      ) : null}
+
+      {searchParams.get("updated") === "1" ? (
+        <div className="banner banner-info" role="status">
+          Event changes saved successfully.
+        </div>
+      ) : null}
 
       {state.kind === "loading" ? (
         <div className="kpi-grid" aria-busy="true">
@@ -89,7 +103,14 @@ function EventDetails({ event }: { event: OrganizerEvent }) {
           <h1 className="dashboard-title">{event.title}</h1>
           <p className="muted">{event.problemStatement ?? "No description provided yet."}</p>
         </div>
-        <EventStatusPill status={event.status} />
+        <div className="org-detail-status">
+          <EventStatusPill status={event.status} />
+          {String(event.status).toUpperCase() === "DRAFT" ? (
+            <Link className="btn btn-sm" href={`/organizer/events/${encodeURIComponent(event.id)}/edit`}>
+              Edit event
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <dl className="org-detail-grid">

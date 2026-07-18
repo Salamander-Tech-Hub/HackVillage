@@ -74,4 +74,63 @@ describe("organizerApi", () => {
 
     await expect(getMyEvents()).rejects.toBeInstanceOf(OrganizerApiError);
   });
+
+  it("submits create payload and returns created event", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          event: {
+            id: "evt_123",
+            title: "Event One",
+            status: "DRAFT",
+            prizePoolKes: 1000,
+            submissionsCount: 0,
+          },
+        }),
+      }),
+    );
+
+    const { createEvent } = await import("@/lib/organizerApi");
+    const result = await createEvent({
+      title: "Event One",
+      problemStatement: "Build a useful platform for community impact.",
+      prizePoolKes: 1000,
+      startsAt: "2026-09-01T10:00:00.000Z",
+      endsAt: "2026-09-01T18:00:00.000Z",
+    });
+
+    expect(result.id).toBe("evt_123");
+  });
+
+  it("maps server field errors for create/update responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          message: "Validation failed",
+          errors: { title: "Title is required" },
+          code: "VALIDATION_FAILED",
+        }),
+      }),
+    );
+
+    const { createEvent, OrganizerApiError } = await import("@/lib/organizerApi");
+
+    await expect(
+      createEvent({
+        title: "",
+        problemStatement: "Build a useful platform for community impact.",
+        prizePoolKes: 1000,
+        startsAt: "2026-09-01T10:00:00.000Z",
+        endsAt: "2026-09-01T18:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      fieldErrors: { title: "Title is required" },
+    });
+  });
 });

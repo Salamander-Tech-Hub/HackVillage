@@ -2,9 +2,13 @@ import { MOCK_ORGANIZER_EVENTS } from "@/lib/mockEvents";
 import { summarizeOverview } from "@/lib/organizerData";
 import type {
   ApiErrorResponse,
+  ApiValidationErrorResponse,
+  DraftEventInput,
+  DraftEventPatchInput,
   EscrowState,
   EventStatus,
   EventsListResponse,
+  FieldErrorMap,
   OrganizerEvent,
   OrganizerOverview,
   PaginatedEventsResponse,
@@ -16,12 +20,19 @@ const ENABLE_MOCK_EVENTS =
 export class OrganizerApiError extends Error {
   status: number;
   code?: string;
+  fieldErrors?: FieldErrorMap;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    fieldErrors?: FieldErrorMap,
+  ) {
     super(message);
     this.name = "OrganizerApiError";
     this.status = status;
     this.code = code;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -87,6 +98,47 @@ export async function getOrganizerEventById(
   return normalizeEventPayload(payload);
 }
 
+export async function createEvent(payload: DraftEventInput): Promise<OrganizerEvent> {
+  const response = await fetch("/api/events", {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  const result = (await response.json()) as unknown;
+  return normalizeEventPayload(result);
+}
+
+export async function updateEvent(
+  eventId: string,
+  payload: DraftEventPatchInput,
+): Promise<OrganizerEvent> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  const result = (await response.json()) as unknown;
+  return normalizeEventPayload(result);
+}
+
 function normalizeEventsPayload(payload: unknown): OrganizerEvent[] {
   if (Array.isArray(payload)) {
     return payload.map(normalizeEvent);
@@ -144,14 +196,19 @@ function normalizeEvent(input: unknown): OrganizerEvent {
 async function toApiError(response: Response): Promise<OrganizerApiError> {
   let message = `Request failed with status ${response.status}`;
   let code: string | undefined;
+  let fieldErrors: FieldErrorMap | undefined;
   try {
-    const body = (await response.json()) as ApiErrorResponse;
-    if (body?.error) message = body.error;
+    const body = (await response.json()) as ApiErrorResponse | ApiValidationErrorResponse;
+    if ("error" in body && body.error) message = body.error;
+    if ("message" in body && body.message) message = body.message;
     if (body?.code) code = body.code;
+    if ("errors" in body && body.errors && typeof body.errors === "object") {
+      fieldErrors = body.errors as FieldErrorMap;
+    }
   } catch {
     // Ignore parse failures and use default message.
   }
-  return new OrganizerApiError(message, response.status, code);
+  return new OrganizerApiError(message, response.status, code, fieldErrors);
 }
 
 function shouldFallbackToMock(error: unknown): boolean {
