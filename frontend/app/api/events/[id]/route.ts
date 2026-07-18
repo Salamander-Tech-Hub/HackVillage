@@ -1,4 +1,4 @@
-import { AuthError, requireApiRole } from "@backend/lib/auth";
+import { AuthError, getSession, hasRole, requireApiRole } from "@backend/lib/auth";
 import {
   formatZodError,
   updateEventDraftSchema,
@@ -7,6 +7,7 @@ import {
   getEventDetail,
   updateEventDraft,
 } from "@backend/services/events/events.service";
+import { getPublicEventBySlugOrId } from "@backend/services/events/public-events.service";
 import { NextRequest, NextResponse } from "next/server";
 
 function errorResponse(error: unknown) {
@@ -44,9 +45,20 @@ function errorResponse(error: unknown) {
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await requireApiRole("ORGANIZER");
-    const event = await getEventDetail(params.id);
+    const publicEvent = await getPublicEventBySlugOrId(params.id);
+    if (publicEvent) {
+      return NextResponse.json(publicEvent);
+    }
 
+    const session = await getSession();
+    if (!session || !hasRole(session, "ORGANIZER")) {
+      return NextResponse.json(
+        { error: { code: "NOT_FOUND", message: "Event not found" } },
+        { status: 404 },
+      );
+    }
+
+    const event = await getEventDetail(params.id);
     if (!event) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Event not found" } },
