@@ -41,6 +41,28 @@ export function hasRole(session: AuthSession | null, ...roles: AppRole[]): boole
   return Boolean(session && (roles.includes(session.role) || session.role === "ADMIN"));
 }
 
+export class AuthError extends Error {
+  code: "UNAUTHORIZED" | "FORBIDDEN";
+
+  constructor(code: "UNAUTHORIZED" | "FORBIDDEN", message: string) {
+    super(message);
+    this.name = "AuthError";
+    this.code = code;
+  }
+}
+
+/** Require a signed-in user with one of the given roles (ADMIN always allowed). */
+export async function requireApiRole(...roles: AppRole[]): Promise<AuthSession> {
+  const session = await getSession();
+  if (!session) {
+    throw new AuthError("UNAUTHORIZED", "Sign in is required.");
+  }
+  if (!hasRole(session, ...roles)) {
+    throw new AuthError("FORBIDDEN", "You do not have permission for this action.");
+  }
+  return session;
+}
+
 export function getDemoPassword(): string | null {
   if (process.env.DEMO_AUTH_PASSWORD) return process.env.DEMO_AUTH_PASSWORD;
   return process.env.NODE_ENV === "production" ? null : "hackvillage-demo";
