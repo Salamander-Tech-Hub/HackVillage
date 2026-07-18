@@ -13,6 +13,9 @@ export default function HomePage() {
         <Link className="btn primary" href="/events">
           Browse events
         </Link>
+        <Link className="btn" href="/organizer">
+          Organizer dashboard
+        </Link>
         <Link className="btn" href="/offline">
           Offline fallback
         </Link>
