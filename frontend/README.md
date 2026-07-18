@@ -60,6 +60,30 @@ Do **not** call Paystack, RPC, or Prisma directly from components. Go through `a
 
 Within the frontend, use `@/*` for local paths (e.g. `@/components/...`).
 
+## Local authentication and roles
+
+Issue #3 adds a signed, HTTP-only session cookie for the local credentials flow. The
+session contains the persisted Prisma user ID, email, and role. Middleware redirects
+unauthenticated visitors away from protected workspaces; server pages and route
+handlers repeat the role check, so the UI is never the only access control.
+
+1. Set `NEXTAUTH_SECRET` to a long random value in `.env.local`.
+2. Run `npm run db:migrate && npm run db:seed`.
+3. Start the app with `npm run dev` and open `/sign-in`.
+4. Use `DEMO_AUTH_PASSWORD` (defaults to `hackvillage-demo` in development) with one
+   of the seeded accounts:
+
+| Role | Email | Workspace |
+|---|---|---|
+| Organizer | `organizer@hackvillage.local` | `/organizer` |
+| Developer / attendee | `dev@hackvillage.local` | `/attendee` |
+| Judge | `judge@hackvillage.local` | `/judge` |
+| Administrator | `admin@hackvillage.local` | `/admin` |
+
+The credentials stub is intentionally local-demo scope. Production authentication
+should replace `verifyDemoPassword` with a real identity provider or password-hash
+verification while continuing to use the same session and role helpers.
+
 ## PWA
 
 - Manifest: `app/manifest.ts`

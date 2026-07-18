@@ -1,10 +1,9 @@
-import { prisma } from "@backend/lib/db";
-
 const seededEmails = {
   organizer: "organizer@hackvillage.local",
   attendeeOne: "attendee1@hackvillage.local",
   attendeeTwo: "attendee2@hackvillage.local",
   judge: "judge@hackvillage.local",
+  admin: "admin@hackvillage.local",
 } as const;
 
 function logMockSeed() {
@@ -13,6 +12,7 @@ function logMockSeed() {
     seededEmails.attendeeOne,
     seededEmails.attendeeTwo,
     seededEmails.judge,
+    seededEmails.admin,
   ]);
 
   console.log("Seeded records:", {
@@ -29,6 +29,9 @@ async function main() {
     logMockSeed();
     return;
   }
+
+  // Lazy-import so mock mode works before Prisma validates DATABASE_URL.
+  const { prisma } = await import("@backend/lib/db");
 
   const organizer = await prisma.user.upsert({
     where: { email: seededEmails.organizer },
@@ -83,6 +86,19 @@ async function main() {
       email: seededEmails.judge,
       name: "Demo Judge",
       role: "JUDGE",
+    },
+  });
+
+  const admin = await prisma.user.upsert({
+    where: { email: seededEmails.admin },
+    update: {
+      name: "Demo Administrator",
+      role: "ADMIN",
+    },
+    create: {
+      email: seededEmails.admin,
+      name: "Demo Administrator",
+      role: "ADMIN",
     },
   });
 
@@ -256,6 +272,7 @@ async function main() {
     attendeeOne.email,
     attendeeTwo.email,
     judge.email,
+    admin.email,
   ]);
 
   console.log("Seeded records:", {
@@ -272,5 +289,10 @@ main()
     process.exit(1);
   })
   .finally(async () => {
+    if (!process.env.DATABASE_URL) {
+      return;
+    }
+
+    const { prisma } = await import("@backend/lib/db");
     await prisma.$disconnect();
   });
