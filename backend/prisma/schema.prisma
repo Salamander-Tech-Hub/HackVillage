@@ -78,11 +78,12 @@ model Event {
   id               String      @id @default(cuid())
   slug             String      @unique
   title            String
-  problemStatement String
+  problem_statement String
   status           EventStatus @default(DRAFT)
-  prizePoolKes     Decimal     @db.Decimal(14, 2)
-  startsAt         DateTime?
-  endsAt           DateTime?
+  prize_total      Int
+  prizePoolKes     Decimal     @db.Decimal(14, 2) // Retained for EscrowVault compatibility
+  start            DateTime?
+  end              DateTime?
   mediaDeadlineAt  DateTime?
   organizerId      String
   organizer        User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
