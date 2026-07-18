@@ -42,6 +42,8 @@ a {
   justify-content: center;
   padding: 2.5rem 1.5rem 3rem;
   max-width: 40rem;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .brand {
@@ -698,5 +700,120 @@ button:disabled {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Landing — Prize Verification section (issue #14)
+   Visual language aligned to Stitch hero: navy + bright blue accents */
+
+:root {
+  --landing-navy: #0a0d14;
+  --landing-navy-raised: #121826;
+  --landing-cyan: #4fc3f7;
+  --landing-blue: #1a56db;
+  --landing-fg: #f4f7fb;
+  --landing-muted: #9aa6b8;
+  --landing-line: rgba(244, 247, 251, 0.12);
+  --landing-font: "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.landing-verify {
+  background: var(--landing-navy);
+  color: var(--landing-fg);
+  font-family: var(--landing-font);
+  padding: clamp(3.5rem, 8vw, 5.5rem) 1.5rem;
+  border-top: 1px solid var(--landing-line);
+}
+
+.landing-verify-inner {
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.landing-verify-kicker {
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--landing-cyan);
+}
+
+.landing-verify-title {
+  margin: 0 0 0.85rem;
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--landing-fg);
+  font-family: var(--landing-font);
+}
+
+.landing-verify-title span {
+  color: var(--landing-cyan);
+}
+
+.landing-verify-lede {
+  margin: 0 0 2.5rem;
+  max-width: 36rem;
+  color: var(--landing-muted);
+  font-size: clamp(1rem, 2vw, 1.1rem);
+  line-height: 1.55;
+}
+
+.landing-verify-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.landing-verify-step {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--landing-line);
+}
+
+.landing-verify-num {
+  display: block;
+  margin-bottom: 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--landing-cyan);
+}
+
+.landing-verify-step-title {
+  margin: 0 0 0.45rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--landing-fg);
+  letter-spacing: -0.02em;
+}
+
+.landing-verify-step-body {
+  margin: 0;
+  color: var(--landing-muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+  max-width: 28rem;
+}
+
+@media (min-width: 768px) {
+  .landing-verify-steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.75rem;
+  }
+
+  .landing-verify-step {
+    padding-top: 0;
+    border-top: none;
+    border-left: 1px solid var(--landing-line);
+    padding-left: 1.35rem;
+  }
+
+  .landing-verify-step:first-child {
+    border-left: none;
+    padding-left: 0;
   }
 }
