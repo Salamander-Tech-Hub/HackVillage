@@ -10,6 +10,8 @@ vi.mock("@backend/lib/auth", () => ({
     }
   },
   requireApiRole: vi.fn(),
+  getSession: vi.fn(),
+  hasRole: vi.fn(),
 }));
 
 vi.mock("@backend/services/events/events.service", () => ({
@@ -19,8 +21,14 @@ vi.mock("@backend/services/events/events.service", () => ({
   updateEventDraft: vi.fn(),
 }));
 
-import { AuthError, requireApiRole } from "@backend/lib/auth";
+vi.mock("@backend/services/events/public-events.service", () => ({
+  listPublicEvents: vi.fn(),
+  getPublicEventBySlugOrId: vi.fn(),
+}));
+
+import { AuthError, getSession, hasRole, requireApiRole } from "@backend/lib/auth";
 import * as eventsService from "@backend/services/events/events.service";
+import * as publicEventsService from "@backend/services/events/public-events.service";
 import { GET as GET_ID, PATCH } from "../../frontend/app/api/events/[id]/route";
 import { GET, POST } from "../../frontend/app/api/events/route";
 
@@ -92,14 +100,22 @@ describe("Events API", () => {
   });
 
   describe("GET /api/events", () => {
-    test("missing ?mine=1 returns 400", async () => {
-      vi.mocked(requireApiRole).mockResolvedValue(organizerSession);
+    test("public list without mine=1", async () => {
+      vi.mocked(publicEventsService.listPublicEvents).mockResolvedValue({
+        page: 1,
+        limit: 6,
+        total: 1,
+        events: [{ id: "public-1", slug: "nairobi-climate-sprint" }],
+      } as never);
+
       const req = new NextRequest("http://localhost/api/events");
       const res = await GET(req);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.events[0].slug).toBe("nairobi-climate-sprint");
     });
 
-    test("happy path", async () => {
+    test("mine=1 happy path", async () => {
       vi.mocked(requireApiRole).mockResolvedValue(organizerSession);
       vi.mocked(eventsService.getOrganizerEvents).mockResolvedValue([
         { id: "event-1" },
@@ -114,16 +130,28 @@ describe("Events API", () => {
   });
 
   describe("GET /api/events/:id", () => {
-    test("returns 404 if missing", async () => {
-      vi.mocked(requireApiRole).mockResolvedValue(organizerSession);
-      vi.mocked(eventsService.getEventDetail).mockResolvedValue(null);
+    test("returns public event by slug without auth", async () => {
+      vi.mocked(publicEventsService.getPublicEventBySlugOrId).mockResolvedValue({
+        id: "1",
+        slug: "nairobi-climate-sprint",
+      } as never);
+      const req = new NextRequest("http://localhost/api/events/nairobi-climate-sprint");
+      const res = await GET_ID(req, { params: { id: "nairobi-climate-sprint" } });
+      expect(res.status).toBe(200);
+    });
+
+    test("returns 404 if missing for anonymous", async () => {
+      vi.mocked(publicEventsService.getPublicEventBySlugOrId).mockResolvedValue(null);
+      vi.mocked(getSession).mockResolvedValue(null);
       const req = new NextRequest("http://localhost/api/events/1");
       const res = await GET_ID(req, { params: { id: "1" } });
       expect(res.status).toBe(404);
     });
 
-    test("returns 403 if user does not own event", async () => {
-      vi.mocked(requireApiRole).mockResolvedValue(organizerSession);
+    test("returns 403 if organizer does not own draft", async () => {
+      vi.mocked(publicEventsService.getPublicEventBySlugOrId).mockResolvedValue(null);
+      vi.mocked(getSession).mockResolvedValue(organizerSession);
+      vi.mocked(hasRole).mockReturnValue(true);
       vi.mocked(eventsService.getEventDetail).mockResolvedValue({
         id: "1",
         organizerId: "org-2",

@@ -4,6 +4,7 @@ import {
   createDraftEvent,
   getOrganizerEvents,
 } from "@backend/services/events/events.service";
+import { listPublicEvents } from "@backend/services/events/public-events.service";
 import { NextRequest, NextResponse } from "next/server";
 
 function errorResponse(error: unknown) {
@@ -38,23 +39,19 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireApiRole("ORGANIZER");
-    const mine = new URL(req.url).searchParams.get("mine");
+    const url = new URL(req.url);
+    const mine = url.searchParams.get("mine");
 
-    if (mine !== "1") {
-      return NextResponse.json(
-        {
-          error: {
-            code: "BAD_REQUEST",
-            message: "Only ?mine=1 is supported for this endpoint",
-          },
-        },
-        { status: 400 },
-      );
+    if (mine === "1") {
+      const session = await requireApiRole("ORGANIZER");
+      const events = await getOrganizerEvents(session.userId);
+      return NextResponse.json(events);
     }
 
-    const events = await getOrganizerEvents(session.userId);
-    return NextResponse.json(events);
+    const page = Number(url.searchParams.get("page") ?? "1");
+    const limit = Number(url.searchParams.get("limit") ?? "6");
+    const payload = await listPublicEvents({ page, limit });
+    return NextResponse.json(payload);
   } catch (error) {
     return errorResponse(error);
   }
