@@ -85,7 +85,7 @@ function SphereScene() {
 
 export default function ThreeSphere() {
   return (
-    <div className="absolute inset-0 h-full w-full rounded-[2rem] border border-sky-500/10 bg-transparent shadow-soft">
+    <div className="absolute inset-0 h-full w-full rounded-[2rem] bg-transparent">
       <Canvas camera={{ fov: 38, position: [0, 0, 6] }}>
         <ambientLight intensity={0.6} />
         <directionalLight intensity={1.4} position={[5, 5, 5]} />
