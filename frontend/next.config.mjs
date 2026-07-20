@@ -16,6 +16,7 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ["three", "@react-three/fiber"],
   // Allow App Router pages to import from ../backend
   experimental: {
     externalDir: true,

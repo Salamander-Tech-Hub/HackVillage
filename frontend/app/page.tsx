@@ -1,26 +1,10 @@
-import Link from "next/link";
+import { LandingHero } from "@/components/landing/LandingHero";
 import { PrizeVerificationSection } from "@/components/landing/PrizeVerificationSection";
 
 export default function HomePage() {
   return (
     <>
-      <main className="shell">
-        <p className="brand">HackVillage</p>
-        <h1>Trust-as-a-Service for high-impact tech events</h1>
-        <p className="lede">
-          Prize escrow, Proof of Work profiles, and career pathing — built for the African
-          developer ecosystem.
-        </p>
-        <div className="actions">
-          <Link className="btn primary" href="/organizer">
-            Start Organizing
-          </Link>
-          <Link className="btn" href="/events">
-            Join as Builder
-          </Link>
-        </div>
-      </main>
-
+      <LandingHero />
       <PrizeVerificationSection />
     </>
   );
