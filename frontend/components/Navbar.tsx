@@ -1,4 +1,3 @@
-import { Bell, HelpCircle, Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
@@ -49,15 +48,15 @@ export default function Navbar() {
             type="button"
             aria-label="Open navigation menu"
             onClick={() => setMobileOpen(true)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 md:hidden"
+            className="inline-flex h-11 w-24 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 md:hidden"
           >
-            <Menu className="h-5 w-5" />
+            Menu
           </button>
-          <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
-            <Bell className="h-5 w-5" />
+          <button type="button" className="inline-flex h-11 w-24 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+            Alerts
           </button>
-          <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
-            <HelpCircle className="h-5 w-5" />
+          <button type="button" className="inline-flex h-11 w-24 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+            Help
           </button>
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-cyan-400 text-sm font-semibold text-slate-950 profile-ring">
             <span>AV</span>
@@ -77,9 +76,9 @@ export default function Navbar() {
                 type="button"
                 aria-label="Close navigation menu"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                className="inline-flex h-11 w-24 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
               >
-                <X className="h-5 w-5" />
+                Close
               </button>
             </div>
             <div className="mt-6 space-y-4 border-t border-slate-200 pt-6">
