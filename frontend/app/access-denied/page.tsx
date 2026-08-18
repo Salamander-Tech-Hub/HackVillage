@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { dashboardPathFor, getSession, roleLabel } from "@backend/lib/auth";
 
 type AccessDeniedProps = {
@@ -13,7 +14,10 @@ export default async function AccessDeniedPage({ searchParams }: AccessDeniedPro
 
   return (
     <main className="state-page">
-      <Link className="state-brand" href="/">HackVillage<span aria-hidden="true">.</span></Link>
+      <Link className="state-brand" href="/">
+        <Image src="/images/hackvillage-logo-icon.svg" alt="" width={34} height={34} />
+        <span>HackVillage</span>
+      </Link>
       <div className="state-number" aria-hidden="true">403</div>
       <p className="auth-kicker">Access is role-scoped</p>
       <h1>This account cannot open {required}.</h1>

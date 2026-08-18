@@ -260,6 +260,7 @@ HackVillage/
 
 | Area | Docs |
 |---|---|
+| Current implementation status and remaining work | [Project Status](./docs/PROJECT_STATUS.md) |
 | UI / PWA | [frontend/README.md](./frontend/README.md) |
 | Data / escrow / payouts | [backend/README.md](./backend/README.md) |
 | Contributions | [CONTRIBUTING.md](./CONTRIBUTING.md) |

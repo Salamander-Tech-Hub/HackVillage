@@ -30,9 +30,11 @@
   },
   "dependencies": {
     "@prisma/client": "6.9.0",
+    "@react-three/fiber": "^8.17.14",
     "next": "14.2.35",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "three": "^0.167.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -40,6 +42,7 @@
     "@types/node": "20.17.30",
     "@types/react": "18.3.20",
     "@types/react-dom": "18.3.6",
+    "@types/three": "^0.167.0",
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.35",
     "prettier": "3.5.3",

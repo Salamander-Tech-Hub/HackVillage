@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description:
     "Trust-as-a-Service for developers. Innovation-as-a-Service for organizations. Open-source infrastructure for high-impact tech events.",
   applicationName: "HackVillage",
+  icons: {
+    icon: "/images/hackvillage-logo-icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -21,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B3D2E",
+  themeColor: "#00041a",
   width: "device-width",
   initialScale: 1,
 };

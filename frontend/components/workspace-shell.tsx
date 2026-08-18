@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { type AuthSession, roleLabel } from "@backend/lib/auth";
 import { SignOutButton } from "@/components/sign-out-button";
 
@@ -20,7 +21,10 @@ export function WorkspaceShell({
   return (
     <main className="workspace-page">
       <header className="workspace-header">
-        <Link className="workspace-brand" href="/">HackVillage</Link>
+        <Link className="workspace-brand" href="/">
+          <Image src="/images/hackvillage-logo-icon.svg" alt="" width={32} height={32} />
+          <span>HackVillage</span>
+        </Link>
         <div className="workspace-user">
           <span>{session.name ?? session.email}</span>
           <span className="role-pill">{roleLabel(session.role)}</span>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { dashboardPathFor, getSession, hasRole } from "@backend/lib/auth";
 import { safeReturnPath } from "@/lib/access";
 import { SignInForm } from "@/components/sign-in-form";
@@ -28,7 +29,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     <main className="auth-page">
       <a className="skip-link" href="#sign-in-form">Skip to sign in</a>
       <section className="auth-story" aria-label="HackVillage overview">
-        <Link className="auth-brand" href="/">HackVillage<span aria-hidden="true">.</span></Link>
+        <Link className="auth-brand" href="/">
+          <Image src="/images/hackvillage-logo-icon.svg" alt="" width={36} height={36} priority />
+          <span>HackVillage</span>
+        </Link>
         <div className="auth-story-content">
           <p className="auth-kicker">The event trust layer</p>
           <h1>Good work deserves a clear path forward.</h1>
