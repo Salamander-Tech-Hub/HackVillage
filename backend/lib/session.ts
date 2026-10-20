@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { NextResponse } from "next/server";
 
 export const AUTH_COOKIE_NAME = "hackvillage_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
@@ -98,6 +99,22 @@ export function verifySession(token: string | undefined, secret: string): AuthSe
   } catch {
     return null;
   }
+}
+
+export function attachSessionCookie(
+  response: Pick<NextResponse, "cookies">,
+  user: { id: string; email: string; name: string | null; role: AppRole },
+) {
+  const token = signSession(createSession(user), getAuthSecret());
+  response.cookies.set({
+    name: AUTH_COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
 }
 
 export function getAuthSecret(): string {

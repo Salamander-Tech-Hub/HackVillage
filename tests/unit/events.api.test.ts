@@ -160,6 +160,76 @@ describe("Events API", () => {
       const res = await GET_ID(req, { params: { id: "1" } });
       expect(res.status).toBe(403);
     });
+
+    test.each(["PRIZE_VERIFIED", "LIVE"] as const)(
+      "owner gets the organizer payload for a %s event",
+      async (status) => {
+        vi.mocked(getSession).mockResolvedValue(organizerSession);
+        vi.mocked(hasRole).mockReturnValue(true);
+        vi.mocked(eventsService.getEventDetail).mockResolvedValue({
+          id: "1",
+          organizerId: "org-1",
+          status,
+          allowedActions: status === "LIVE" ? ["START_JUDGING"] : ["PUBLISH"],
+          escrow: { state: "VERIFIED", amountKes: 1000, publicLedgerUrl: null },
+          registrationsCount: 4,
+          submissionsCount: 2,
+        } as never);
+
+        const req = new NextRequest("http://localhost/api/events/1?mine=1");
+        const res = await GET_ID(req, { params: { id: "1" } });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.allowedActions.length).toBeGreaterThan(0);
+        expect(data.escrow.state).toBe("VERIFIED");
+        expect(data.registrationsCount).toBe(4);
+        expect(publicEventsService.getPublicEventBySlugOrId).not.toHaveBeenCalled();
+      },
+    );
+
+    test("non-owner organizer still gets the public payload for a public event", async () => {
+      vi.mocked(getSession).mockResolvedValue(organizerSession);
+      vi.mocked(hasRole).mockReturnValue(true);
+      vi.mocked(eventsService.getEventDetail).mockResolvedValue({
+        id: "1",
+        organizerId: "org-2",
+      } as never);
+      vi.mocked(publicEventsService.getPublicEventBySlugOrId).mockResolvedValue({
+        id: "1",
+        status: "LIVE",
+      } as never);
+
+      const req = new NextRequest("http://localhost/api/events/1");
+      const res = await GET_ID(req, { params: { id: "1" } });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.allowedActions).toBeUndefined();
+    });
+
+    test("non-owner organizer with mine=1 is forbidden", async () => {
+      vi.mocked(getSession).mockResolvedValue(organizerSession);
+      vi.mocked(hasRole).mockReturnValue(true);
+      vi.mocked(eventsService.getEventDetail).mockResolvedValue({
+        id: "1",
+        organizerId: "org-2",
+      } as never);
+
+      const req = new NextRequest("http://localhost/api/events/1?mine=1");
+      const res = await GET_ID(req, { params: { id: "1" } });
+
+      expect(res.status).toBe(403);
+    });
+
+    test("mine=1 without a session returns 401", async () => {
+      vi.mocked(getSession).mockResolvedValue(null);
+
+      const req = new NextRequest("http://localhost/api/events/1?mine=1");
+      const res = await GET_ID(req, { params: { id: "1" } });
+
+      expect(res.status).toBe(401);
+    });
   });
 
   describe("PATCH /api/events/:id", () => {

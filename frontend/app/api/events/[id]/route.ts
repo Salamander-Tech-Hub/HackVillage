@@ -43,22 +43,35 @@ function errorResponse(error: unknown) {
   );
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const publicEvent = await getPublicEventBySlugOrId(params.id);
-    if (publicEvent) {
-      return NextResponse.json(publicEvent);
+    const wantsOrganizerView = req.nextUrl.searchParams.get("mine") === "1";
+    const session = await getSession();
+    const canManageEvents = hasRole(session, "ORGANIZER");
+    const event = canManageEvents ? await getEventDetail(params.id) : null;
+
+    if (
+      session &&
+      event &&
+      (event.organizerId === session.userId || session.role === "ADMIN")
+    ) {
+      return NextResponse.json(event);
     }
 
-    const session = await getSession();
-    if (!session || !hasRole(session, "ORGANIZER")) {
+    if (!wantsOrganizerView) {
+      const publicEvent = await getPublicEventBySlugOrId(params.id);
+      if (publicEvent) {
+        return NextResponse.json(publicEvent);
+      }
+    }
+
+    if (!session && wantsOrganizerView) {
       return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "Event not found" } },
-        { status: 404 },
+        { error: { code: "UNAUTHORIZED", message: "Sign in is required." } },
+        { status: 401 },
       );
     }
 
-    const event = await getEventDetail(params.id);
     if (!event) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Event not found" } },
@@ -66,14 +79,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       );
     }
 
-    if (event.organizerId !== session.userId && session.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: { code: "FORBIDDEN", message: "You don't own this event" } },
-        { status: 403 },
-      );
-    }
-
-    return NextResponse.json(event);
+    return NextResponse.json(
+      { error: { code: "FORBIDDEN", message: "You don't own this event" } },
+      { status: 403 },
+    );
   } catch (error) {
     return errorResponse(error);
   }
