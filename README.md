@@ -26,6 +26,7 @@ _Trust-as-a-Service for Developers. Innovation-as-a-Service for Organizations._
 
 ## Table of Contents
 
+- [Current status](#current-status)
 - [Mission](#mission)
 - [The Problem](#the-problem)
 - [The HackVillage Standard](#the-hackvillage-standard)
@@ -38,6 +39,23 @@ _Trust-as-a-Service for Developers. Innovation-as-a-Service for Organizations._
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [License](#license)
+
+---
+
+## Current status
+
+**v1 money is Paystack (KES / M-Pesa / bank) only.** We are not adding USDT, USDC, Web3 wallets, or on-chain disbursement in this pass. Organizer mockups that show crypto are visual references — implement deposits and payouts through Paystack.
+
+Active work is the organizer dashboard board: [#86](https://github.com/Salamander-Tech-Hub/HackVillage/issues/86).
+
+| Phase | Issues | Status |
+|---|---|---|
+| 1 — Make the flow work | [#72](https://github.com/Salamander-Tech-Hub/HackVillage/issues/72), [#73](https://github.com/Salamander-Tech-Hub/HackVillage/issues/73), [#74](https://github.com/Salamander-Tech-Hub/HackVillage/issues/74) | Claimed · in review on [PR #87](https://github.com/Salamander-Tech-Hub/HackVillage/pull/87) |
+| 2 — Make the money honest | [#75](https://github.com/Salamander-Tech-Hub/HackVillage/issues/75), [#85](https://github.com/Salamander-Tech-Hub/HackVillage/issues/85), [#76](https://github.com/Salamander-Tech-Hub/HackVillage/issues/76), [#77](https://github.com/Salamander-Tech-Hub/HackVillage/issues/77), [#78](https://github.com/Salamander-Tech-Hub/HackVillage/issues/78) | Open · Paystack/KES, not USDT |
+| 3 — Complete the event page | [#79](https://github.com/Salamander-Tech-Hub/HackVillage/issues/79), [#80](https://github.com/Salamander-Tech-Hub/HackVillage/issues/80), [#81](https://github.com/Salamander-Tech-Hub/HackVillage/issues/81), [#84](https://github.com/Salamander-Tech-Hub/HackVillage/issues/84) | Open |
+| 4 — Database and verification | [#82](https://github.com/Salamander-Tech-Hub/HackVillage/issues/82), [#83](https://github.com/Salamander-Tech-Hub/HackVillage/issues/83) | Open |
+
+Living detail: [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md). Organizer screen mockups: `frontend/app/organizer/_design/`.
 
 ---
 
@@ -146,8 +164,8 @@ HackVillage operates as a three-phase engine:
            │                         │
 ┌──────────▼──────────┐   ┌──────────▼──────────────────┐
 │   PostgreSQL DB     │   │     Escrow Microservice      │
-│  Structured Proof   │   │  Paystack + Smart Contract   │
-│  of Work tracking   │   │  (Polygon / Solana layer)    │
+│  Structured Proof   │   │  Paystack escrow (v1)        │
+│  of Work tracking   │   │  KES · M-Pesa · bank          │
 └─────────────────────┘   └─────────────────────────────┘
 ```
 
@@ -156,8 +174,8 @@ HackVillage operates as a three-phase engine:
 | Frontend | Next.js 14 + PWA | SEO-optimized discovery; installable app |
 | Backend | Node.js / TypeScript (`backend/`) | Escrow, payouts, Prisma domain services |
 | Database | PostgreSQL + Prisma | Structured Proof of Work records |
-| Payments | Paystack | Fiat deposits, M-Pesa & bank payouts |
-| Ledger | Smart Contract (Polygon/Solana) | Transparent, tamper-proof transaction log |
+| Payments | **Paystack (v1)** | KES deposits, M-Pesa and bank payouts. No USDT/USDC/Web3 in this pass |
+| Ledger | App ledger + public URL | Deposit and payout records in Postgres; chain/USDT is later |
 | Open Source Core | GitHub | Judging logic & escrow mechanics are public |
 
 ---
@@ -165,6 +183,8 @@ HackVillage operates as a three-phase engine:
 ## Escrow & Payout Engine
 
 The financial layer is the heart of Trust-as-a-Service and is held to a **90% Trust Score KPI** — meaning 90% of all prizes must be disbursed within one hour of event conclusion.
+
+**v1 scope:** Paystack only (Kenyan shillings, cards, M-Pesa, bank). Do not implement USDT, USDC, wallet connect, gas fees, or multi-sig chain payouts until a later roadmap slice. Stitch mockups that show crypto should be read as layout, not as the payment rail.
 
 ### Phase 1 — Fund Security (Setup)
 
@@ -227,9 +247,10 @@ Paystack API ──── Final transfer ──── Public Ledger entry record
 
 | Phase | Feature | Status |
 |---|---|---|
-| v1.0 | Prize Vault & Escrow Engine | In Development |
+| v1.0 | Prize Vault & Escrow Engine (Paystack / KES) | In Development |
 | v1.0 | Developer Proof of Work Profiles | In Development |
 | v1.0 | Paystack Split Disbursement | In Development |
+| Later | USDT / on-chain disbursement | Not in this pass |
 | v1.1 | 48-Hour Media Vault + Trust Penalty | Planned |
 | v1.1 | One-Click Internship Matching | Planned |
 | v1.2 | Legacy Tracker (3-month check-ins) | Planned |
@@ -306,7 +327,7 @@ Useful scripts:
 |---|---|
 | `npm run dev` | Next.js dev server (`./frontend`) |
 | `npm run build` | Production build (enables PWA service worker) |
-| `npm run db:migrate` / `db:seed` / `db:studio` | Prisma against `backend/prisma/schema.prisma` |
+| `npm run db:migrate` / `db:migrate:deploy` / `db:seed` / `db:studio` | Prisma against `backend/prisma/schema.prisma` |
 | `npm test` | Unit tests |
 | `npm run typecheck` / `npm run lint` | CI-style checks |
 

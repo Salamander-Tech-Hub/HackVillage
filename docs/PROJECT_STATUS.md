@@ -1,7 +1,11 @@
 # HackVillage Project Status
 
-**Updated:** 18 August 2026  
+**Updated:** 20 October 2026  
 **Scope:** Current frontend, backend, database, testing, and production readiness
+
+## Payments decision (v1)
+
+**Paystack only.** Deposits and payouts are Kenyan shillings via Paystack (card, M-Pesa, bank). USDT, USDC, Web3 wallets, and on-chain disbursement are **not** in this pass. Organizer Stitch mockups that show crypto are layout references; implement those screens against Paystack and KES.
 
 ## Executive summary
 
@@ -15,6 +19,8 @@ HackVillage currently has a credible product foundation:
 - Attendee, judge, and administrator workspace shells
 - A Prisma schema covering events, teams, submissions, judging, escrow, payouts, media, and career features
 - A passing local build, lint, typecheck, and unit-test suite
+
+Organizer dashboard board: [#86](https://github.com/Salamander-Tech-Hub/HackVillage/issues/86). Phase 1 (#72, #73, #74) is claimed and in review on [PR #87](https://github.com/Salamander-Tech-Hub/HackVillage/pull/87).
 
 The project is not yet production-ready. Most of the differentiating product loop—event creation in the UI, registration, teams, submissions, judging, escrow verification, and payouts—either remains incomplete or exists only as schema and service stubs.
 
@@ -38,20 +44,17 @@ The project is not yet production-ready. Most of the differentiating product loo
 | Area | Current limitation | Related issue |
 |---|---|---|
 | Authentication | Uses a shared local demo password rather than production identity | [#47](https://github.com/Salamander-Tech-Hub/HackVillage/issues/47) |
-| Organizer events | Dashboard is primarily read-only; create/edit forms are missing | [#6](https://github.com/Salamander-Tech-Hub/HackVillage/issues/6) |
-| Organizer event detail | Escrow and publish actions are not connected end-to-end | [#7](https://github.com/Salamander-Tech-Hub/HackVillage/issues/7) |
-| Organizer data | UI expects counts and escrow fields not consistently returned by the API | [#46](https://github.com/Salamander-Tech-Hub/HackVillage/issues/46) |
+| Organizer events | Create/edit draft forms are available; later lifecycle actions stay on the event detail page | [#6](https://github.com/Salamander-Tech-Hub/HackVillage/issues/6) |
+| Organizer event detail | Escrow start, test verification, and publish are wired; live Paystack is still a stub | [#7](https://github.com/Salamander-Tech-Hub/HackVillage/issues/7) |
+| Organizer data | Dashboard now receives camelCase events with counts, escrow, location, and format | [#46](https://github.com/Salamander-Tech-Hub/HackVillage/issues/46) |
 | Public events | Needs pagination, filtering, richer verification details, and participation actions | [#57](https://github.com/Salamander-Tech-Hub/HackVillage/issues/57) |
 | Attendee profile | Uses a minimal profile instead of verified Proof of Work history | [#39](https://github.com/Salamander-Tech-Hub/HackVillage/issues/39) |
 | Route resilience | Loading/error boundaries and low-power 3D fallbacks are incomplete | [#58](https://github.com/Salamander-Tech-Hub/HackVillage/issues/58) |
 
 ### Not yet implemented
 
-- Organizer create and edit event workflow
-- Event registration and team creation/joining
-- Team project submission workflow
-- Judge assignment, scoring, and structured feedback
 - Winner declaration
+- Richer team administration beyond create/join
 - Escrow deposit and verification UI
 - Payout recipient onboarding and verification
 - Instant and milestone payout status UI
@@ -75,21 +78,21 @@ The project is not yet production-ready. Most of the differentiating product loo
 
 | Area | Current limitation | Related issue |
 |---|---|---|
-| Event lifecycle | Statuses exist in Prisma, but transitions are not enforced as a state machine | [#49](https://github.com/Salamander-Tech-Hub/HackVillage/issues/49) |
-| Database bootstrap | Prisma schema exists without a committed baseline migration | [#42](https://github.com/Salamander-Tech-Hub/HackVillage/issues/42) |
+| Event lifecycle | Server-enforced transitions exist; Paystack verification remains a test stub | [#49](https://github.com/Salamander-Tech-Hub/HackVillage/issues/49) |
+| Database bootstrap | Baseline Prisma migration is committed; apply with `npm run db:migrate:deploy` | [#42](https://github.com/Salamander-Tech-Hub/HackVillage/issues/42) |
 | Build/runtime database behavior | Public pages can incorrectly depend on database access during builds | [#48](https://github.com/Salamander-Tech-Hub/HackVillage/issues/48) |
-| Health endpoint | Reports process availability but not database/provider readiness | [#51](https://github.com/Salamander-Tech-Hub/HackVillage/issues/51) |
+| Health endpoint | Reports process, required env, and database readiness | [#51](https://github.com/Salamander-Tech-Hub/HackVillage/issues/51) |
 
 ### Stubbed or missing
 
 | Area | What remains | Related issue |
 |---|---|---|
-| Escrow | Paystack initialization, signed webhook verification, persistence, replay protection | [#40](https://github.com/Salamander-Tech-Hub/HackVillage/issues/40) |
-| Payouts | Provider recipients, idempotent transfers, retry handling, and 50/50 releases | [#38](https://github.com/Salamander-Tech-Hub/HackVillage/issues/38), [#55](https://github.com/Salamander-Tech-Hub/HackVillage/issues/55) |
-| Public ledger | Real auditable records, reconciliation, and public references | [#50](https://github.com/Salamander-Tech-Hub/HackVillage/issues/50) |
-| Teams | Registration, team creation, joining, and membership authorization APIs | [#10](https://github.com/Salamander-Tech-Hub/HackVillage/issues/10) |
-| Submissions and judging | Submission APIs, assignments, feedback rules, finalization | [#41](https://github.com/Salamander-Tech-Hub/HackVillage/issues/41) |
-| Administration | Operational APIs, audit trails, and controlled recovery actions | [#53](https://github.com/Salamander-Tech-Hub/HackVillage/issues/53) |
+| Escrow | Deposit initialize + signed Paystack webhook path; live Paystack still optional | [#40](https://github.com/Salamander-Tech-Hub/HackVillage/issues/40) |
+| Payouts | Recipient onboarding, idempotent 50/50 releases, admin retry | [#38](https://github.com/Salamander-Tech-Hub/HackVillage/issues/38), [#55](https://github.com/Salamander-Tech-Hub/HackVillage/issues/55) |
+| Public ledger | Deposit and payout ledger rows with public explorer URLs | [#50](https://github.com/Salamander-Tech-Hub/HackVillage/issues/50) |
+| Teams | Registration, team creation, and joining exist; richer team admin still later | [#10](https://github.com/Salamander-Tech-Hub/HackVillage/issues/10) |
+| Submissions and judging | Submit/update, assignments, 3-point feedback, and close-gate exist | [#41](https://github.com/Salamander-Tech-Hub/HackVillage/issues/41) |
+| Administration | Overview, audit log, and payout retry recovery are available | [#53](https://github.com/Salamander-Tech-Hub/HackVillage/issues/53) |
 
 ## Testing and operations status
 

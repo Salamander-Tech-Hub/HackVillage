@@ -23,7 +23,8 @@ The mockups use a bottom navigation with five tabs: **Home · Escrow · Winners 
 
 Use these values so the screens stay consistent with each other:
 
-- Event: **Pan-African DeFi & AI Buildathon 2024**, $25,000 USDC prize pool
+- Event: **Pan-African DeFi & AI Buildathon 2024**, KES 2,500,000 prize pool (mockups still show USDC as placeholder art)
+- **v1 payment rail: Paystack / KES.** Do not build USDT, USDC, Web3 wallets, or on-chain payouts from these screens.
 - Track 1: $15,000 split $8,000 / $5,000 / $2,000 (ZK-Shield, AutonomousLiquidity, NilePay)
 - Track 2: $10,000 bounty pool
 - Trust Score: 98, with adjustments on a small scale (escrow pre-fund +2.0, full media verification +1.0, late handover -1.5)
@@ -37,8 +38,11 @@ Use these values so the screens stay consistent with each other:
 - Escrow Lock stepper labels match Create Hackathon (General, Tracks, Rules, Escrow Lock).
 - Aligned prize amounts, trust point values, event name, and network (Arbitrum One) across screens.
 
-## Open questions
+## Payments (decided)
 
-- **Payments rail:** these designs use USDC on Arbitrum, Web3 wallets, gas fees, and Filecoin/IPFS. The backend currently uses Paystack (fiat). Confirm the payment approach before building Escrow, Escrow Lock, and Prize Release.
+v1 is **Paystack (KES / M-Pesa / bank)**. Crypto in these HTML mockups (USDC, Arbitrum, Web3 wallet, gas, multi-sig) is leftover Stitch copy. When implementing Escrow, Escrow Lock, and Prize Release, use Paystack checkout, KES amounts, and the existing ledger — not wallets or USDT.
+
+## Still open
+
 - **Upload overlap:** Prize Release has a "Fast Handover Ingestion" upload area that duplicates the Media Vault uploader. Prefer linking to Media Vault when building.
 - **Home overview** (`/organizer/overview`) still has no mockup.
