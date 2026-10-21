@@ -4,14 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { isOrganizerNavActive } from "@/lib/organizerRoutes";
+
 const NAV_ITEMS = [
   { href: "/organizer/overview", label: "Overview" },
   { href: "/organizer/events", label: "My Events" },
 ] as const;
 
-export function isOrganizerNavActive(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+export { isOrganizerNavActive };
 
 export function OrganizerShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();

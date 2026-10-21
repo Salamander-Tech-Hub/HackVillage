@@ -70,3 +70,37 @@ export interface PaginatedEventsResponse {
   page?: number;
   pageSize?: number;
 }
+
+export interface JudgeReadinessItem {
+  judgeId: string;
+  name: string;
+  email: string;
+  reviewed: number;
+  total: number;
+  pending: number;
+  isComplete: boolean;
+}
+
+export interface SubmissionReadinessItem {
+  submissionId: string;
+  title: string;
+  teamName: string;
+  reviewed: number;
+  total: number;
+  isComplete: boolean;
+}
+
+export interface JudgingReadiness {
+  eventId: string;
+  status: EventStatus;
+  totalSubmissions: number;
+  totalJudges: number;
+  totalReviewsRequired: number;
+  totalReviewsCompleted: number;
+  percentage: number;
+  isReadyToClose: boolean;
+  missingReason: string | null;
+  judges: JudgeReadinessItem[];
+  submissions: SubmissionReadinessItem[];
+}
+

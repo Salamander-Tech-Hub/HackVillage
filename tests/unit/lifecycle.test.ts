@@ -101,4 +101,30 @@ describe("event lifecycle", () => {
       }),
     ).not.toThrow();
   });
+
+  it("blocks closing the event when judging is incomplete", () => {
+    expect(() =>
+      assertPreconditions("CLOSE", {
+        ...readyDraft,
+        status: "JUDGING",
+        judgingReadiness: {
+          isReadyToClose: false,
+          missingReason: "Judge Amina B. has 5 pending reviews.",
+        },
+      }),
+    ).toThrow(/Judge Amina B. has 5 pending reviews/i);
+  });
+
+  it("accepts closing the event when judging readiness is satisfied", () => {
+    expect(() =>
+      assertPreconditions("CLOSE", {
+        ...readyDraft,
+        status: "JUDGING",
+        judgingReadiness: {
+          isReadyToClose: true,
+          missingReason: null,
+        },
+      }),
+    ).not.toThrow();
+  });
 });

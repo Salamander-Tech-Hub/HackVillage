@@ -5,6 +5,7 @@ import type {
   EscrowState,
   EventStatus,
   EventsListResponse,
+  JudgingReadiness,
   OrganizerEvent,
   OrganizerOverview,
   PaginatedEventsResponse,
@@ -85,6 +86,74 @@ export async function getOrganizerEventById(
 
   const payload = (await response.json()) as unknown;
   return normalizeEventPayload(payload);
+}
+
+export async function getJudgingProgress(
+  eventId: string,
+): Promise<JudgingReadiness> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/judging`, {
+    method: "GET",
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return (await response.json()) as JudgingReadiness;
+}
+
+export async function assignJudge(
+  eventId: string,
+  data: { email: string; name?: string },
+): Promise<JudgingReadiness> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/judging`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return (await response.json()) as JudgingReadiness;
+}
+
+export async function removeJudge(
+  eventId: string,
+  judgeId: string,
+): Promise<JudgingReadiness> {
+  const response = await fetch(
+    `/api/events/${encodeURIComponent(eventId)}/judging?judgeId=${encodeURIComponent(judgeId)}`,
+    {
+      method: "DELETE",
+      credentials: "same-origin",
+    },
+  );
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return (await response.json()) as JudgingReadiness;
+}
+
+export async function closeEvent(
+  eventId: string,
+): Promise<JudgingReadiness> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/close`, {
+    method: "POST",
+    credentials: "same-origin",
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return (await response.json()) as JudgingReadiness;
 }
 
 function normalizeEventsPayload(payload: unknown): OrganizerEvent[] {

@@ -3,13 +3,23 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { EventStatusPill } from "@/components/StatusPill";
-import { OrganizerApiError, getOrganizerEventById } from "@/lib/organizerApi";
-import type { OrganizerEvent } from "@/lib/types";
+import { JudgeAssignmentForm } from "@/components/organizer/JudgeAssignmentForm";
+import { JudgingProgressPanel } from "@/components/organizer/JudgingProgressPanel";
+import {
+  OrganizerApiError,
+  getJudgingProgress,
+  getOrganizerEventById,
+} from "@/lib/organizerApi";
+import type { JudgingReadiness, OrganizerEvent } from "@/lib/types";
 
 type DetailState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; event: OrganizerEvent };
+  | {
+      kind: "ready";
+      event: OrganizerEvent;
+      judgingReadiness: JudgingReadiness | null;
+    };
 
 const KES = new Intl.NumberFormat("en-KE", {
   style: "currency",
@@ -33,8 +43,12 @@ export default function OrganizerEventDetailPage({
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
-      const event = await getOrganizerEventById(params.eventId);
-      setState({ kind: "ready", event });
+      // Judging data is secondary: a failure there still renders the event.
+      const [event, judgingReadiness] = await Promise.all([
+        getOrganizerEventById(params.eventId),
+        getJudgingProgress(params.eventId).catch(() => null),
+      ]);
+      setState({ kind: "ready", event, judgingReadiness });
     } catch (error) {
       const message =
         error instanceof OrganizerApiError
@@ -47,6 +61,26 @@ export default function OrganizerEventDetailPage({
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function refreshJudging() {
+    try {
+      applyJudging(await getJudgingProgress(params.eventId));
+    } catch {
+      // Keep the last known progress; the next refresh can try again.
+    }
+  }
+
+  function applyJudging(judgingReadiness: JudgingReadiness) {
+    setState((prev) =>
+      prev.kind === "ready"
+        ? {
+            ...prev,
+            judgingReadiness,
+            event: { ...prev.event, status: judgingReadiness.status },
+          }
+        : prev,
+    );
+  }
 
   return (
     <section className="org-panel" aria-live="polite">
@@ -75,8 +109,60 @@ export default function OrganizerEventDetailPage({
         </div>
       ) : null}
 
-      {state.kind === "ready" ? <EventDetails event={state.event} /> : null}
+      {state.kind === "ready" ? (
+        <>
+          <EventDetails event={state.event} />
+          <JudgingSection
+            event={state.event}
+            readiness={state.judgingReadiness}
+            onChange={applyJudging}
+            onRefresh={() => void refreshJudging()}
+          />
+        </>
+      ) : null}
     </section>
+  );
+}
+
+const ROSTER_LOCKED_STATUSES = ["JUDGING", "CLOSED", "ARCHIVED"];
+
+function JudgingSection({
+  event,
+  readiness,
+  onChange,
+  onRefresh,
+}: {
+  event: OrganizerEvent;
+  readiness: JudgingReadiness | null;
+  onChange: (readiness: JudgingReadiness) => void;
+  onRefresh: () => void;
+}) {
+  if (!readiness) {
+    return (
+      <div className="banner banner-warn" role="alert">
+        Judging details could not be loaded.{" "}
+        <button type="button" className="btn btn-sm" onClick={onRefresh}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!ROSTER_LOCKED_STATUSES.includes(event.status)) {
+    return (
+      <JudgeAssignmentForm eventId={event.id} judges={readiness.judges} onChange={onChange} />
+    );
+  }
+
+  return (
+    <JudgingProgressPanel
+      eventId={event.id}
+      eventTitle={event.title}
+      status={event.status}
+      readiness={readiness}
+      onEventClosed={onChange}
+      onRefresh={onRefresh}
+    />
   );
 }
 

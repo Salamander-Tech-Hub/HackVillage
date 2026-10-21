@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOrganizerNavActive } from "@/components/organizer/OrganizerShell";
+import { isOrganizerNavActive } from "@/lib/organizerRoutes";
 
 describe("isOrganizerNavActive", () => {
   it("marks exact matches as active", () => {

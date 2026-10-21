@@ -23,6 +23,10 @@ export type LifecycleEventSnapshot = {
   startsAt: Date | string | null;
   endsAt: Date | string | null;
   escrowState: string | null;
+  judgingReadiness?: {
+    isReadyToClose: boolean;
+    missingReason?: string | null;
+  } | null;
 };
 
 export const LIFECYCLE_TRANSITIONS: Record<
@@ -127,6 +131,16 @@ export function assertPreconditions(
       );
     }
     assertSchedule(event, "publishing");
+  }
+
+  if (action === "CLOSE") {
+    if (event.judgingReadiness && !event.judgingReadiness.isReadyToClose) {
+      throw new LifecycleError(
+        "PRECONDITION_FAILED",
+        event.judgingReadiness.missingReason ??
+          "Every assigned judge must review every submission before closing.",
+      );
+    }
   }
 }
 
