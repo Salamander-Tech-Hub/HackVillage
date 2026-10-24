@@ -44,6 +44,32 @@ enum PayoutPhase {
   MILESTONE_50
 }
 
+enum PayoutStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum LedgerKind {
+  DEPOSIT
+  INSTANT_50
+  MILESTONE_50
+}
+
+enum LifecycleAction {
+  START_ESCROW
+  VERIFY_ESCROW
+  PUBLISH
+  START_JUDGING
+  CLOSE
+  ARCHIVE
+}
+
+enum PayoutMethod {
+  MPESA
+  BANK
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -61,6 +87,9 @@ model User {
   endorsementsGiven JudgeEndorsement[] @relation("EndorsementsGiven")
   endorsementsReceived JudgeEndorsement[] @relation("EndorsementsReceived")
   profile         DeveloperProfile?
+  eventTransitions EventTransition[] @relation("TransitionActor")
+  payoutRecipients PayoutRecipient[]
+  milestonesApproved Milestone[]     @relation("MilestoneApprover")
 }
 
 model DeveloperProfile {
@@ -95,6 +124,9 @@ model Event {
   judgeAssignments JudgeAssignment[]
   mediaAssets      MediaAsset[]
   internshipTags   InternshipTag[]
+  transitions      EventTransition[]
+
+  @@index([organizerId])
 }
 
 model Team {
@@ -127,13 +159,21 @@ model Submission {
   demoUrl      String?
   status       SubmissionStatus @default(DEMO)
   isWinner     Boolean          @default(false)
+  winnerRank       Int?
+  prizeAmountKes   Decimal?         @db.Decimal(14, 2)
+  payoutRecipientId String?
   event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
   team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  payoutRecipient PayoutRecipient? @relation(fields: [payoutRecipientId], references: [id])
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
   feedback     JudgeFeedback[]
   payouts      Payout[]
+  milestone    Milestone?
+
+  @@unique([eventId, winnerRank])
+  @@index([eventId])
 }
 
 model JudgeAssignment {
@@ -194,23 +234,76 @@ model Payout {
   idempotencyKey    String      @unique
   paystackTransferCode String?
   ledgerTxHash      String?
-  status            String      @default("PENDING")
+  status            PayoutStatus @default(PENDING)
   escrowVault       EscrowVault @relation(fields: [escrowVaultId], references: [id], onDelete: Cascade)
   submission        Submission? @relation(fields: [submissionId], references: [id])
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  @@index([escrowVaultId])
 }
 
 model LedgerEntry {
   id            String      @id @default(cuid())
   escrowVaultId String
-  kind          String
+  kind          LedgerKind
   amountKes     Decimal     @db.Decimal(14, 2)
   txHash        String
   publicUrl     String?
   metadata      Json?
   escrowVault   EscrowVault @relation(fields: [escrowVaultId], references: [id], onDelete: Cascade)
   createdAt     DateTime    @default(now())
+
+  @@index([escrowVaultId])
+}
+
+// Log of lifecycle actions on an event, for the history panel.
+model EventTransition {
+  id         String          @id @default(cuid())
+  eventId    String
+  action     LifecycleAction
+  fromStatus EventStatus
+  toStatus   EventStatus
+  actorId    String?
+  event      Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actor      User?           @relation("TransitionActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime        @default(now())
+
+  @@index([eventId])
+}
+
+// Where a winning team's prize gets paid. Paystack only for now.
+model PayoutRecipient {
+  id                    String       @id @default(cuid())
+  userId                String
+  method                PayoutMethod
+  accountRef            String
+  accountName           String
+  paystackRecipientCode String?
+  verifiedAt            DateTime?
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  submissions           Submission[]
+
+  @@index([userId])
+}
+
+// Handover proof that has to be approved before the second 50% is paid.
+// No reportUrl yet means we are waiting on the team. A report without
+// approvedAt means we are waiting on the organizer.
+model Milestone {
+  id           String     @id @default(cuid())
+  submissionId String     @unique
+  reportUrl    String?
+  submittedAt  DateTime?
+  approvedById String?
+  approvedAt   DateTime?
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  approvedBy   User?      @relation("MilestoneApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 model MediaAsset {
