@@ -62,7 +62,7 @@ CREATE TABLE "EventTransition" (
     "action" "LifecycleAction" NOT NULL,
     "fromStatus" "EventStatus" NOT NULL,
     "toStatus" "EventStatus" NOT NULL,
-    "actorId" TEXT,
+    "actorId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "EventTransition_pkey" PRIMARY KEY ("id")
@@ -128,7 +128,7 @@ ALTER TABLE "Submission" ADD CONSTRAINT "Submission_payoutRecipientId_fkey" FORE
 ALTER TABLE "EventTransition" ADD CONSTRAINT "EventTransition_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventTransition" ADD CONSTRAINT "EventTransition_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "EventTransition" ADD CONSTRAINT "EventTransition_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PayoutRecipient" ADD CONSTRAINT "PayoutRecipient_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

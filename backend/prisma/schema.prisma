@@ -264,9 +264,9 @@ model EventTransition {
   action     LifecycleAction
   fromStatus EventStatus
   toStatus   EventStatus
-  actorId    String?
+  actorId    String
   event      Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  actor      User?           @relation("TransitionActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor      User            @relation("TransitionActor", fields: [actorId], references: [id], onDelete: Restrict)
   createdAt  DateTime        @default(now())
 
   @@index([eventId])
