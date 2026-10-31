@@ -50,8 +50,9 @@ export function canListJudges(facts: EventAccessFacts): EventAccessDecision {
 }
 
 /**
- * Teams list; the owner, an admin, an assigned judge or a registered participant 
- * Anyone once the event is live.
+ * Teams list: the owner, an admin, an assigned judge, or a participant already on a team.
+ * This branch has no registration table, so a participant is a team member.
+ * Once the event is LIVE, JUDGING, CLOSED, or ARCHIVED, anyone can see the list.
  */
 export function canListTeams(facts: EventAccessFacts): EventAccessDecision {
   if (TEAM_LIST_PUBLIC_STATUSES.includes(facts.event.status)) return allow;

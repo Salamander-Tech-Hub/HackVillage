@@ -27,6 +27,7 @@ export async function loadEventAccessFacts(
       where: { eventId_judgeId: { eventId, judgeId: session.userId } },
       select: { id: true },
     }),
+    // Team membership is the participant signal this schema can prove.
     prisma.teamMember.findFirst({
       where: { userId: session.userId, team: { eventId } },
       select: { id: true },
