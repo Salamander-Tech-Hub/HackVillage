@@ -30,11 +30,16 @@ export type LockPrizePoolResult = {
 export async function lockPrizePool(
   input: LockPrizePoolInput,
 ): Promise<LockPrizePoolResult> {
-  // TODO: verify Paystack transaction, then call contracts/escrow
+  const { recordOnPublicLedger } = await import("@backend/contracts/escrow");
+  const recorded = await recordOnPublicLedger({
+    eventId: input.eventId,
+    kind: "DEPOSIT",
+    amountKes: input.amountKes,
+  });
   return {
     state: "PRIZE_VAULT",
-    ledgerTxHash: `stub-lock-${input.eventId}`,
-    publicLedgerUrl: `https://example.invalid/tx/stub-lock-${input.eventId}`,
+    ledgerTxHash: recorded.txHash,
+    publicLedgerUrl: recorded.publicUrl,
   };
 }
 

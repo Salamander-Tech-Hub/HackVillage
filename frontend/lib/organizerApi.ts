@@ -2,11 +2,16 @@ import { MOCK_ORGANIZER_EVENTS } from "@/lib/mockEvents";
 import { summarizeOverview } from "@/lib/organizerData";
 import type {
   ApiErrorResponse,
+  DeclaredWinner,
   EscrowState,
+  EventFormInput,
   EventStatus,
   EventsListResponse,
+  LifecycleAction,
   OrganizerEvent,
   OrganizerOverview,
+  OrganizerSubmission,
+  OrganizerTeam,
   PaginatedEventsResponse,
 } from "@/lib/types";
 
@@ -23,6 +28,119 @@ export class OrganizerApiError extends Error {
     this.status = status;
     this.code = code;
   }
+}
+
+function toDraftPayload(input: EventFormInput) {
+  return {
+    title: input.title,
+    problem_statement: input.problemStatement,
+    prize_total: input.prizePoolKes,
+    start: input.startsAt ?? undefined,
+    end: input.endsAt ?? undefined,
+    location: input.location,
+    format: input.format,
+  };
+}
+
+export async function createEvent(input: EventFormInput): Promise<OrganizerEvent> {
+  const response = await fetch("/api/events", {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toDraftPayload(input)),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return normalizeEventPayload(await response.json());
+}
+
+export async function updateEvent(
+  eventId: string,
+  input: EventFormInput,
+): Promise<OrganizerEvent> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toDraftPayload(input)),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return normalizeEventPayload(await response.json());
+}
+
+export async function transitionEvent(
+  eventId: string,
+  action: LifecycleAction,
+): Promise<OrganizerEvent> {
+  const response = await fetch(
+    `/api/events/${encodeURIComponent(eventId)}/transitions`,
+    {
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    },
+  );
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return normalizeEventPayload(await response.json());
+}
+
+export type OrganizerJudgingProgress = {
+  eventId: string;
+  status: string;
+  totalSubmissions: number;
+  totalJudges: number;
+  totalReviewsRequired: number;
+  totalReviewsCompleted: number;
+  percentage: number;
+  isReadyToClose: boolean;
+  missingReason: string | null;
+  judges: {
+    judgeId: string;
+    name: string;
+    email: string;
+    reviewed: number;
+    total: number;
+    pending: number;
+    isComplete: boolean;
+  }[];
+  submissions: {
+    submissionId: string;
+    title: string;
+    teamName: string;
+    reviewed: number;
+    total: number;
+    isComplete: boolean;
+  }[];
+};
+
+export async function getJudgingProgress(eventId: string): Promise<OrganizerJudgingProgress> {
+  const response = await fetch(
+    `/api/events/${encodeURIComponent(eventId)}/judging/progress`,
+    {
+      method: "GET",
+      cache: "no-store",
+      credentials: "same-origin",
+    },
+  );
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return (await response.json()) as OrganizerJudgingProgress;
 }
 
 export async function getMyEvents(): Promise<EventsListResponse> {
@@ -87,6 +205,123 @@ export async function getOrganizerEventById(
   return normalizeEventPayload(payload);
 }
 
+export type OrganizerTransition = {
+  id: string;
+  action: string;
+  fromStatus: string;
+  toStatus: string;
+  createdAt: string;
+  actorName: string;
+};
+
+export type OrganizerLedgerEntry = {
+  id: string;
+  kind: string;
+  amountKes: number;
+  txHash: string;
+  publicUrl: string | null;
+  createdAt: string;
+};
+
+export type OrganizerPayout = {
+  id: string;
+  phase: string;
+  status: string;
+  amountKes: number;
+  submissionTitle: string | null;
+  createdAt: string;
+};
+
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(path, {
+    method: "GET",
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return (await response.json()) as T;
+}
+
+export function getEventTransitions(eventId: string) {
+  return getJson<{ transitions: OrganizerTransition[] }>(
+    `/api/events/${encodeURIComponent(eventId)}/transitions`,
+  ).then((payload) => payload.transitions);
+}
+
+export function getEventLedger(eventId: string) {
+  return getJson<{ entries: OrganizerLedgerEntry[]; publicLedgerUrl: string | null }>(
+    `/api/events/${encodeURIComponent(eventId)}/ledger`,
+  );
+}
+
+export function getEventPayouts(eventId: string) {
+  return getJson<{ payouts: OrganizerPayout[] }>(
+    `/api/events/${encodeURIComponent(eventId)}/payouts`,
+  ).then((payload) => payload.payouts);
+}
+
+export async function getEventTeams(eventId: string): Promise<OrganizerTeam[]> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/teams`, {
+    method: "GET",
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  const payload = (await response.json()) as unknown;
+  if (!isRecord(payload) || !Array.isArray(payload.teams)) {
+    throw new OrganizerApiError("Invalid teams response payload", 500, "BAD_PAYLOAD");
+  }
+  return payload.teams.map(normalizeTeam);
+}
+
+export async function getEventSubmissions(eventId: string): Promise<OrganizerSubmission[]> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/submissions`, {
+    method: "GET",
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  const payload = (await response.json()) as unknown;
+  if (!isRecord(payload) || !Array.isArray(payload.submissions)) {
+    throw new OrganizerApiError("Invalid submissions response payload", 500, "BAD_PAYLOAD");
+  }
+  return payload.submissions.map(normalizeSubmission);
+}
+
+export async function declareWinners(
+  eventId: string,
+  submissionIds: string[],
+): Promise<DeclaredWinner[]> {
+  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/winners`, {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ submissionIds }),
+  });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  const payload = (await response.json()) as unknown;
+  if (!isRecord(payload) || !Array.isArray(payload.winners)) {
+    throw new OrganizerApiError("Invalid winners response payload", 500, "BAD_PAYLOAD");
+  }
+  return payload.winners.map((winner) => {
+    const record = asRecord(winner);
+    return {
+      id: String(record.id ?? ""),
+      title: String(record.title ?? "Untitled project"),
+      teamId: String(record.teamId ?? ""),
+    };
+  });
+}
+
 function normalizeEventsPayload(payload: unknown): OrganizerEvent[] {
   if (Array.isArray(payload)) {
     return payload.map(normalizeEvent);
@@ -140,7 +375,22 @@ function normalizeEvent(input: unknown): OrganizerEvent {
     submissionsCount: toNumber(record.submissionsCount),
     updatedAt: toNullableString(record.updatedAt),
     escrow,
+    allowedActions: Array.isArray(record.allowedActions)
+      ? record.allowedActions.filter(isLifecycleAction)
+      : undefined,
+    paystackConfigured: record.paystackConfigured === true,
   };
+}
+
+function isLifecycleAction(value: unknown): value is LifecycleAction {
+  return (
+    value === "START_ESCROW" ||
+    value === "VERIFY_ESCROW" ||
+    value === "PUBLISH" ||
+    value === "START_JUDGING" ||
+    value === "CLOSE" ||
+    value === "ARCHIVE"
+  );
 }
 
 async function toApiError(response: Response): Promise<OrganizerApiError> {
@@ -218,6 +468,43 @@ function toFormat(value: unknown): OrganizerEvent["format"] {
     return value;
   }
   return null;
+}
+
+function normalizeTeam(input: unknown): OrganizerTeam {
+  const record = asRecord(input);
+  const members = Array.isArray(record.members)
+    ? record.members.map((member) => {
+        const row = asRecord(member);
+        return {
+          userId: String(row.userId ?? ""),
+          name: toNullableString(row.name),
+          email: String(row.email ?? ""),
+        };
+      })
+    : [];
+
+  return {
+    id: String(record.id ?? ""),
+    eventId: String(record.eventId ?? ""),
+    name: String(record.name ?? "Untitled team"),
+    createdAt: toNullableString(record.createdAt) ?? undefined,
+    members,
+  };
+}
+
+function normalizeSubmission(input: unknown): OrganizerSubmission {
+  const record = asRecord(input);
+  return {
+    id: String(record.id ?? ""),
+    eventId: String(record.eventId ?? ""),
+    teamId: String(record.teamId ?? ""),
+    teamName: String(record.teamName ?? "Untitled team"),
+    title: String(record.title ?? "Untitled project"),
+    repoUrl: toNullableString(record.repoUrl ?? record.repo_url),
+    demoUrl: toNullableString(record.demoUrl ?? record.demo_url),
+    status: String(record.status ?? "DEMO"),
+    isWinner: record.isWinner === true,
+  };
 }
 
 function toEscrowState(value: unknown): EscrowState {

@@ -24,6 +24,12 @@ enum EventStatus {
   ARCHIVED
 }
 
+enum EventFormat {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
 enum SubmissionStatus {
   DEMO
   IN_PRODUCTION
@@ -112,6 +118,8 @@ model Event {
   prizePoolKes     Decimal     @db.Decimal(14, 2)
   startsAt         DateTime?
   endsAt           DateTime?
+  location         String?
+  format           EventFormat?
   mediaDeadlineAt  DateTime?
   organizerId      String
   organizer        User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
