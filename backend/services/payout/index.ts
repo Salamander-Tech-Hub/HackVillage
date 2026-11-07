@@ -22,7 +22,6 @@ export type DisburseResult =
  * Executes a Paystack transfer. On failure, funds remain locked in the vault.
  */
 export async function disburse(input: DisburseInput): Promise<DisburseResult> {
-  // TODO: Paystack Transfer API with idempotencyKey
   if (!input.idempotencyKey) {
     return {
       ok: false,
@@ -31,8 +30,21 @@ export async function disburse(input: DisburseInput): Promise<DisburseResult> {
     };
   }
 
-  return {
-    ok: true,
-    transferCode: `stub-transfer-${input.idempotencyKey}`,
-  };
+  try {
+    const { createPaystackClient } = await import("@backend/lib/paystack");
+    const client = createPaystackClient();
+    const transfer = await client.initiateTransfer({
+      amountKes: input.amountKes,
+      recipientCode: input.recipient.accountRef,
+      reference: input.idempotencyKey,
+      reason: input.reason,
+    });
+    return { ok: true, transferCode: transfer.transferCode };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Transfer failed",
+      fundsRemainLocked: true,
+    };
+  }
 }

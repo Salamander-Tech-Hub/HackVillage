@@ -45,7 +45,11 @@ export async function GET(req: NextRequest) {
     if (mine === "1") {
       const session = await requireApiRole("ORGANIZER");
       const events = await getOrganizerEvents(session.userId);
-      return NextResponse.json(events);
+      return NextResponse.json({
+        events,
+        source: "database",
+        count: events.length,
+      });
     }
 
     const page = Number(url.searchParams.get("page") ?? "1");

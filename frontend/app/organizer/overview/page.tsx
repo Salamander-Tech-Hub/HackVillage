@@ -46,6 +46,9 @@ export default function OrganizerOverviewPage() {
           <Link className="btn" href="/organizer/events">
             View all events
           </Link>
+          <Link className="btn primary" href="/organizer/events/new">
+            Create event
+          </Link>
         </div>
       </header>
 
@@ -75,6 +78,7 @@ export default function OrganizerOverviewPage() {
         <OrganizerEmptyState
           title="No events yet"
           description="Your dashboard will populate once your first event is created."
+          createEventHref="/organizer/events/new"
         />
       ) : null}
 

@@ -6,6 +6,11 @@ export function assertEnv(name: string): string {
   return value;
 }
 
+export function readOptionalEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : undefined;
+}
+
 export const env = {
   databaseUrl: () => assertEnv("DATABASE_URL"),
   paystackSecretKey: () => assertEnv("PAYSTACK_SECRET_KEY"),
