@@ -29,8 +29,8 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hackvillage
-      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hackvillage_shadow
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hackvillage
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hackvillage_shadow
       PGPASSWORD: postgres
 
     steps:
@@ -44,8 +44,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install the Postgres client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+
       - name: Create the shadow database
-        run: psql -h localhost -U postgres -c "CREATE DATABASE hackvillage_shadow"
+        run: psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE hackvillage_shadow"
 
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
