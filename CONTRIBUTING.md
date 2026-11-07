@@ -129,6 +129,8 @@ npm run dev
 
 # Run database migrations
 npm run db:migrate
+# Staging/production: apply committed migrations
+npm run db:migrate:deploy
 
 # (Optional) Seed demo data
 npm run db:seed

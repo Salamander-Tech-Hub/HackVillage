@@ -14,6 +14,26 @@ export type KnownEventStatus =
 // Keep open for forwards compatibility if backend introduces new statuses.
 export type EventStatus = KnownEventStatus | (string & {});
 
+export type LifecycleAction =
+  | "START_ESCROW"
+  | "VERIFY_ESCROW"
+  | "PUBLISH"
+  | "START_JUDGING"
+  | "CLOSE"
+  | "ARCHIVE";
+
+export type FieldErrorMap = Record<string, string>;
+
+export type EventFormInput = {
+  title: string;
+  problemStatement: string;
+  prizePoolKes: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  location: string | null;
+  format: "IN_PERSON" | "VIRTUAL" | "HYBRID" | null;
+};
+
 export type EscrowState =
   | "PENDING_DEPOSIT"
   | "PRIZE_VAULT"
@@ -42,6 +62,8 @@ export interface OrganizerEvent {
   submissionsCount: number;
   updatedAt: string | null;
   escrow: OrganizerEventEscrow | null;
+  allowedActions?: LifecycleAction[];
+  paystackConfigured?: boolean;
 }
 
 export interface EventsListResponse {
@@ -69,4 +91,47 @@ export interface PaginatedEventsResponse {
   total: number;
   page?: number;
   pageSize?: number;
+}
+
+export interface OrganizerTeamMember {
+  userId: string;
+  name: string | null;
+  email: string;
+}
+
+export interface OrganizerTeam {
+  id: string;
+  eventId: string;
+  name: string;
+  createdAt?: string;
+  members: OrganizerTeamMember[];
+}
+
+export interface OrganizerSubmission {
+  id: string;
+  eventId: string;
+  teamId: string;
+  teamName: string;
+  title: string;
+  repoUrl: string | null;
+  demoUrl: string | null;
+  status: string;
+  isWinner: boolean;
+}
+
+export interface DeclaredWinner {
+  id: string;
+  title: string;
+  teamId: string;
+}
+
+export interface ParticipantProject {
+  teamId: string;
+  teamName: string;
+  members: OrganizerTeamMember[];
+  submissionId: string | null;
+  title: string | null;
+  repoUrl: string | null;
+  demoUrl: string | null;
+  isWinner: boolean;
 }

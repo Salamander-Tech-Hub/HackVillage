@@ -23,9 +23,9 @@ backend/
 │   ├── db.ts         # Prisma client singleton
 │   └── env.ts        # Required environment accessors
 ├── prisma/
-│   └── schema.prisma # Source of truth for the data model
+│   ├── schema.prisma # Source of truth for the data model
+│   └── migrations/   # Baseline and later Prisma migrations
 └── db/
-    ├── migrations/   # Produced by `npm run db:migrate`
     └── seeds/        # Local demo data
 ```
 
@@ -53,15 +53,17 @@ If `DATABASE_URL` is not set yet, `npm run db:seed` falls back to mock-data mode
 Then:
 
 ```bash
-npm run db:migrate   # create/apply migrations
-npm run db:seed      # optional demo organizer, attendees, judge, and events
-npm run db:studio    # browse data in Prisma Studio
+npm run db:migrate         # create/apply a new migration in development
+npm run db:migrate:deploy  # apply committed migrations (staging/production)
+npm run db:seed            # optional demo organizer, attendees, judge, and events
+npm run db:studio          # browse data in Prisma Studio
 ```
 
 | Script (root) | What it does |
 |---|---|
 | `npm run db:generate` | Regenerate Prisma Client |
 | `npm run db:migrate` | Dev migrations against `backend/prisma/schema.prisma` |
+| `npm run db:migrate:deploy` | Apply committed migrations without prompting |
 | `npm run db:push` | Push schema without a migration (prototyping only) |
 | `npm run db:seed` | Seed demo organizer, attendees, judge, and events |
 | `npm test` | Unit tests (escrow/payout stubs live under `/tests`) |

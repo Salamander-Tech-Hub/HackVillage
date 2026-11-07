@@ -1,0 +1,263 @@
+import { prisma } from "@backend/lib/db";
+import { createPaystackClient } from "@backend/lib/paystack";
+import { writeLedgerEntry } from "@backend/services/money/ledger.service";
+import { MoneyError, splitPrizePool } from "@backend/services/money/money";
+import { disburse } from "@backend/services/payout";
+
+export async function listEventPayouts(input: {
+  eventId: string;
+  actorId: string;
+  actorRole: string;
+}) {
+  const event = await prisma.event.findUnique({
+    where: { id: input.eventId },
+    include: { escrowVault: true },
+  });
+  if (!event) {
+    throw new MoneyError("NOT_FOUND", "Event not found");
+  }
+  if (event.organizerId !== input.actorId && input.actorRole !== "ADMIN") {
+    throw new MoneyError("FORBIDDEN", "You do not own this event");
+  }
+  if (!event.escrowVault) {
+    return [];
+  }
+
+  const rows = await prisma.payout.findMany({
+    where: { escrowVaultId: event.escrowVault.id },
+    orderBy: { createdAt: "asc" },
+    include: { submission: { select: { title: true } } },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    phase: row.phase,
+    status: row.status,
+    amountKes: Number(row.amountKes),
+    submissionTitle: row.submission?.title ?? null,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export async function declareWinners(input: {
+  eventId: string;
+  actorId: string;
+  actorRole: string;
+  submissionIds: string[];
+}) {
+  const event = await prisma.event.findUnique({ where: { id: input.eventId } });
+  if (!event) {
+    throw new MoneyError("NOT_FOUND", "Event not found");
+  }
+  if (event.organizerId !== input.actorId && input.actorRole !== "ADMIN") {
+    throw new MoneyError("FORBIDDEN", "You do not own this event");
+  }
+  if (event.status !== "JUDGING" && event.status !== "CLOSED") {
+    throw new MoneyError("PRECONDITION_FAILED", "Winners can only be declared during judging or after close.");
+  }
+  if (input.submissionIds.length === 0) {
+    throw new MoneyError("PRECONDITION_FAILED", "Select at least one winning submission.");
+  }
+
+  const submissions = await prisma.submission.findMany({
+    where: { eventId: event.id, id: { in: input.submissionIds } },
+  });
+  if (submissions.length !== input.submissionIds.length) {
+    throw new MoneyError("NOT_FOUND", "One or more submissions were not found on this event.");
+  }
+
+  await prisma.$transaction([
+    prisma.submission.updateMany({
+      where: { eventId: event.id },
+      data: { isWinner: false },
+    }),
+    prisma.submission.updateMany({
+      where: { id: { in: input.submissionIds } },
+      data: { isWinner: true },
+    }),
+  ]);
+
+  return prisma.submission.findMany({
+    where: { eventId: event.id, isWinner: true },
+    select: { id: true, title: true, teamId: true },
+  });
+}
+
+export async function runPayoutPhase(input: {
+  eventId: string;
+  actorId: string;
+  actorRole: string;
+  phase: "INSTANT_50" | "MILESTONE_50";
+}) {
+  const event = await prisma.event.findUnique({
+    where: { id: input.eventId },
+    include: {
+      escrowVault: true,
+      submissions: {
+        where: { isWinner: true },
+        include: {
+          team: { include: { members: { include: { user: { include: { payoutRecipient: true } } } } } },
+        },
+      },
+    },
+  });
+  if (!event) {
+    throw new MoneyError("NOT_FOUND", "Event not found");
+  }
+  if (event.organizerId !== input.actorId && input.actorRole !== "ADMIN") {
+    throw new MoneyError("FORBIDDEN", "You do not own this event");
+  }
+  if (event.status !== "CLOSED") {
+    throw new MoneyError("PRECONDITION_FAILED", "Payouts start only after the event is closed.");
+  }
+  if (!event.escrowVault || event.escrowVault.state === "PENDING_DEPOSIT") {
+    throw new MoneyError("PRECONDITION_FAILED", "Prize vault must be verified before payouts.");
+  }
+  if (input.phase === "MILESTONE_50" && event.escrowVault.state !== "PARTIAL_RELEASED") {
+    throw new MoneyError("PRECONDITION_FAILED", "Run the instant 50% payout before the milestone release.");
+  }
+  if (input.phase === "INSTANT_50" && event.escrowVault.state === "FULLY_RELEASED") {
+    throw new MoneyError("PRECONDITION_FAILED", "This vault has already been fully released.");
+  }
+
+  const winners = event.submissions;
+  const { instantKes, milestoneKes } = splitPrizePool(Number(event.prizePoolKes), winners.length);
+  const amountKes = input.phase === "INSTANT_50" ? instantKes : milestoneKes;
+  const results = [];
+
+  for (const submission of winners) {
+    const payee = submission.team.members[0]?.user;
+    const recipient = payee?.payoutRecipient;
+    if (!payee || !recipient?.paystackRecipientCode) {
+      throw new MoneyError(
+        "PRECONDITION_FAILED",
+        "Every winning team needs a verified payout recipient before funds can move.",
+      );
+    }
+
+    const idempotencyKey = `${event.id}:${input.phase}:${submission.id}`;
+    const existing = await prisma.payout.findUnique({ where: { idempotencyKey } });
+    if (existing?.status === "SUCCESS") {
+      results.push(existing);
+      continue;
+    }
+
+    const transfer = await disburse({
+      idempotencyKey,
+      amountKes,
+      recipient: {
+        type: recipient.type === "BANK" ? "bank" : "mpesa",
+        accountRef: recipient.paystackRecipientCode,
+        name: recipient.displayName,
+      },
+      reason: input.phase,
+    });
+
+    if (!transfer.ok) {
+      const failed = await prisma.payout.upsert({
+        where: { idempotencyKey },
+        create: {
+          escrowVaultId: event.escrowVault.id,
+          submissionId: submission.id,
+          phase: input.phase,
+          amountKes,
+          idempotencyKey,
+          status: "FAILED",
+        },
+        update: { status: "FAILED" },
+      });
+      results.push(failed);
+      continue;
+    }
+
+    const ledger = await writeLedgerEntry({
+      escrowVaultId: event.escrowVault.id,
+      eventId: event.id,
+      kind: input.phase,
+      amountKes,
+      metadata: { submissionId: submission.id },
+    });
+
+    const saved = await prisma.payout.upsert({
+      where: { idempotencyKey },
+      create: {
+        escrowVaultId: event.escrowVault.id,
+        submissionId: submission.id,
+        phase: input.phase,
+        amountKes,
+        idempotencyKey,
+        paystackTransferCode: transfer.transferCode,
+        ledgerTxHash: ledger.txHash,
+        status: "SUCCESS",
+      },
+      update: {
+        paystackTransferCode: transfer.transferCode,
+        ledgerTxHash: ledger.txHash,
+        status: "SUCCESS",
+      },
+    });
+    results.push(saved);
+  }
+
+  const allSucceeded = results.every((row) => row.status === "SUCCESS");
+  if (allSucceeded) {
+    await prisma.escrowVault.update({
+      where: { id: event.escrowVault.id },
+      data: {
+        state: input.phase === "INSTANT_50" ? "PARTIAL_RELEASED" : "FULLY_RELEASED",
+      },
+    });
+  }
+
+  return {
+    phase: input.phase,
+    payouts: results.map((row) => ({
+      id: row.id,
+      status: row.status,
+      amountKes: Number(row.amountKes),
+      idempotencyKey: row.idempotencyKey,
+      transferCode: row.paystackTransferCode,
+    })),
+  };
+}
+
+export async function retryPayout(payoutId: string) {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+    include: {
+      escrowVault: { include: { event: true } },
+      submission: {
+        include: {
+          team: { include: { members: { include: { user: { include: { payoutRecipient: true } } } } } },
+        },
+      },
+    },
+  });
+  if (!payout) {
+    throw new MoneyError("NOT_FOUND", "Payout not found");
+  }
+  if (payout.status === "SUCCESS") {
+    return payout;
+  }
+
+  const recipient = payout.submission?.team.members[0]?.user.payoutRecipient;
+  if (!recipient) {
+    throw new MoneyError("PRECONDITION_FAILED", "Recipient is no longer available for retry.");
+  }
+
+  const client = createPaystackClient();
+  const transfer = await client.initiateTransfer({
+    amountKes: Number(payout.amountKes),
+    recipientCode: recipient.paystackRecipientCode ?? `stub_rcp_${recipient.userId}`,
+    reference: payout.idempotencyKey,
+    reason: payout.phase,
+  });
+
+  return prisma.payout.update({
+    where: { id: payout.id },
+    data: {
+      status: "SUCCESS",
+      paystackTransferCode: transfer.transferCode,
+    },
+  });
+}

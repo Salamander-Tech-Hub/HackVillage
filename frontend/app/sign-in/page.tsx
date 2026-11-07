@@ -54,7 +54,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </div>
         <SignInForm returnTo={returnTo} />
         <p className="auth-footnote">
-          Your role controls what you can open. <Link href="/events">Browse verified events</Link> without signing in.
+          New here? <Link href="/register">Create a developer account</Link>. Or{" "}
+          <Link href="/events">browse verified events</Link> without signing in.
         </p>
       </section>
     </main>

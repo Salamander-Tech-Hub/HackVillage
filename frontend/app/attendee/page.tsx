@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DeveloperWorkspace } from "@/components/developer/DeveloperWorkspace";
+import { PayoutRecipientForm } from "@/components/developer/PayoutRecipientForm";
 import { ProfileStub } from "@/components/ProfileStub";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { requirePageRole } from "@/lib/access";
@@ -18,16 +20,15 @@ export default async function AttendeePage() {
       <section style={{ display: "grid", gap: "1.5rem" }}>
         <div>
           <h2 style={{ marginTop: 0 }}>Upcoming registered events</h2>
-          <div className="workspace-note">
-            You have not registered for any upcoming events yet. Browse public events and form a
-            team when registration opens.
-          </div>
+          <DeveloperWorkspace />
           <div className="actions" style={{ marginTop: "1rem" }}>
             <Link className="btn primary" href="/events">
               Browse events
             </Link>
           </div>
         </div>
+
+        <PayoutRecipientForm />
 
         <div>
           <h2>Profile stub</h2>

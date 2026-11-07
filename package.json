@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate --schema backend/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema backend/prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema backend/prisma/schema.prisma",
     "db:push": "prisma db push --schema backend/prisma/schema.prisma",
     "db:seed": "tsx backend/db/seeds/index.ts",
     "db:studio": "prisma studio --schema backend/prisma/schema.prisma",

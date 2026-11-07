@@ -1,15 +1,6 @@
-import { prisma } from "@backend/lib/db";
-import {
-  AUTH_COOKIE_NAME,
-  createSession,
-  getAuthSecret,
-  SESSION_MAX_AGE_SECONDS,
-  signSession,
-} from "@backend/lib/session";
-import {
-  dashboardPathFor,
-  verifyDemoPassword,
-} from "@backend/lib/auth";
+import { dashboardPathFor } from "@backend/lib/auth";
+import { authenticateUser } from "@backend/lib/credentials";
+import { attachSessionCookie } from "@backend/lib/session";
 import { NextResponse } from "next/server";
 
 type SignInPayload = {
@@ -41,37 +32,18 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!verifyDemoPassword(password)) {
-    return NextResponse.json(
-      { error: "Those details do not match a local demo account. Try a demo workspace below." },
-      { status: 401 },
-    );
-  }
-
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, name: true, role: true },
-    });
+    const user = await authenticateUser(email, password);
     if (!user) {
       return NextResponse.json(
-        { error: "Those details do not match a local demo account. Try a demo workspace below." },
+        { error: "Those details do not match an account." },
         { status: 401 },
       );
     }
 
-    const token = signSession(createSession(user), getAuthSecret());
     const redirectTo = safeReturnPath(payload.returnTo) ?? dashboardPathFor(user.role);
     const response = NextResponse.json({ redirectTo });
-    response.cookies.set({
-      name: AUTH_COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: SESSION_MAX_AGE_SECONDS,
-    });
+    attachSessionCookie(response, user);
     return response;
   } catch (error) {
     console.error("Sign-in failed", error);

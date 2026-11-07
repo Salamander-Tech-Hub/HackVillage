@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   actionsForStatus,
   assertPreconditions,
+  assertTestVerifyAllowed,
   assertTransition,
+  visibleOrganizerActions,
   LifecycleError,
 } from "@backend/services/events/lifecycle";
 
@@ -68,6 +70,15 @@ describe("event lifecycle", () => {
 
   it("accepts a scheduled draft that is ready for escrow", () => {
     expect(() => assertPreconditions("START_ESCROW", readyDraft)).not.toThrow();
+  });
+
+  it("hides start-escrow and blocks test verify while Paystack is configured", () => {
+    expect(visibleOrganizerActions("DRAFT", false)).toEqual([]);
+    expect(visibleOrganizerActions("PENDING_ESCROW", false)).toEqual(["VERIFY_ESCROW"]);
+    expect(visibleOrganizerActions("PENDING_ESCROW", true)).toEqual([]);
+    expect(visibleOrganizerActions("PRIZE_VERIFIED", true)).toEqual(["PUBLISH"]);
+    expect(() => assertTestVerifyAllowed(true)).toThrow(/Paystack is not configured/i);
+    expect(() => assertTestVerifyAllowed(false)).not.toThrow();
   });
 
   it("requires a verified prize vault before publishing", () => {

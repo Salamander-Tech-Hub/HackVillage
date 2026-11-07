@@ -24,6 +24,12 @@ enum EventStatus {
   ARCHIVED
 }
 
+enum EventFormat {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
 enum SubmissionStatus {
   DEMO
   IN_PRODUCTION
@@ -49,6 +55,7 @@ model User {
   email         String   @unique
   name          String?
   role          UserRole @default(DEVELOPER)
+  passwordHash  String?
   githubHandle  String?
   mpesaPhone    String?
   bankAccountRef String?
@@ -57,10 +64,14 @@ model User {
 
   organizedEvents Event[]           @relation("OrganizerEvents")
   teamMemberships TeamMember[]
+  eventRegistrations EventRegistration[]
   judgeAssignments JudgeAssignment[]
   endorsementsGiven JudgeEndorsement[] @relation("EndorsementsGiven")
   endorsementsReceived JudgeEndorsement[] @relation("EndorsementsReceived")
+  eventTransitions EventTransition[]
   profile         DeveloperProfile?
+  payoutRecipient PayoutRecipient?
+  adminAuditLogs  AdminAuditLog[]
 }
 
 model DeveloperProfile {
@@ -83,6 +94,8 @@ model Event {
   prizePoolKes     Decimal     @db.Decimal(14, 2)
   startsAt         DateTime?
   endsAt           DateTime?
+  location         String?
+  format           EventFormat?
   mediaDeadlineAt  DateTime?
   organizerId      String
   organizer        User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
@@ -91,10 +104,35 @@ model Event {
 
   teams            Team[]
   submissions      Submission[]
+  registrations    EventRegistration[]
   escrowVault      EscrowVault?
   judgeAssignments JudgeAssignment[]
   mediaAssets      MediaAsset[]
   internshipTags   InternshipTag[]
+  transitions      EventTransition[]
+}
+
+model EventRegistration {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model EventTransition {
+  id         String      @id @default(cuid())
+  eventId    String
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User        @relation(fields: [actorId], references: [id])
+  action     String
+  fromStatus EventStatus
+  toStatus   EventStatus
+  createdAt  DateTime    @default(now())
 }
 
 model Team {
@@ -106,6 +144,8 @@ model Team {
 
   members     TeamMember[]
   submissions Submission[]
+
+  @@unique([eventId, name])
 }
 
 model TeamMember {
@@ -228,4 +268,39 @@ model InternshipTag {
   label     String
   hrContact String?
   createdAt DateTime @default(now())
+}
+
+model PayoutRecipient {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  String
+  displayName           String
+  maskedAccount         String
+  accountFingerprint    String
+  paystackRecipientCode String?
+  verifiedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  providerEventId String
+  eventType       String
+  createdAt       DateTime @default(now())
+
+  @@unique([provider, providerEventId])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String
+  note       String?
+  createdAt  DateTime @default(now())
 }

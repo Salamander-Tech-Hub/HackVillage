@@ -125,7 +125,9 @@ describe("Events API", () => {
       const res = await GET(req);
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data[0].id).toBe("event-1");
+      expect(data.source).toBe("database");
+      expect(data.count).toBe(1);
+      expect(data.events[0].id).toBe("event-1");
     });
   });
 

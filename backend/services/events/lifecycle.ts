@@ -60,6 +60,27 @@ export function actionsForStatus(status: LifecycleStatus): LifecycleAction[] {
   );
 }
 
+/** Buttons on the organizer event page. Funding lives on one "Fund prize pool" action. */
+export function visibleOrganizerActions(
+  status: LifecycleStatus,
+  paystackConfigured: boolean,
+): LifecycleAction[] {
+  return actionsForStatus(status).filter((action) => {
+    if (action === "START_ESCROW") return false;
+    if (action === "VERIFY_ESCROW" && paystackConfigured) return false;
+    return true;
+  });
+}
+
+export function assertTestVerifyAllowed(paystackConfigured: boolean): void {
+  if (paystackConfigured) {
+    throw new LifecycleError(
+      "PRECONDITION_FAILED",
+      "Test-mode prize verification is only available when Paystack is not configured.",
+    );
+  }
+}
+
 export function assertTransition(
   status: LifecycleStatus,
   action: LifecycleAction,

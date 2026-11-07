@@ -32,17 +32,21 @@ async function main() {
 
   // Lazy-import so mock mode works before Prisma validates DATABASE_URL.
   const { prisma } = await import("@backend/lib/db");
+  const { hashPassword } = await import("@backend/lib/password");
+  const passwordHash = await hashPassword("hackvillage-demo");
 
   const organizer = await prisma.user.upsert({
     where: { email: seededEmails.organizer },
     update: {
       name: "Demo Organizer",
       role: "ORGANIZER",
+      passwordHash,
     },
     create: {
       email: seededEmails.organizer,
       name: "Demo Organizer",
       role: "ORGANIZER",
+      passwordHash,
     },
   });
 
@@ -52,12 +56,14 @@ async function main() {
       name: "Demo Attendee One",
       role: "DEVELOPER",
       githubHandle: "demo-attendee-one",
+      passwordHash,
     },
     create: {
       email: seededEmails.attendeeOne,
       name: "Demo Attendee One",
       role: "DEVELOPER",
       githubHandle: "demo-attendee-one",
+      passwordHash,
     },
   });
 
@@ -67,12 +73,14 @@ async function main() {
       name: "Demo Attendee Two",
       role: "DEVELOPER",
       githubHandle: "demo-attendee-two",
+      passwordHash,
     },
     create: {
       email: seededEmails.attendeeTwo,
       name: "Demo Attendee Two",
       role: "DEVELOPER",
       githubHandle: "demo-attendee-two",
+      passwordHash,
     },
   });
 
@@ -81,11 +89,13 @@ async function main() {
     update: {
       name: "Demo Judge",
       role: "JUDGE",
+      passwordHash,
     },
     create: {
       email: seededEmails.judge,
       name: "Demo Judge",
       role: "JUDGE",
+      passwordHash,
     },
   });
 
@@ -94,11 +104,13 @@ async function main() {
     update: {
       name: "Demo Administrator",
       role: "ADMIN",
+      passwordHash,
     },
     create: {
       email: seededEmails.admin,
       name: "Demo Administrator",
       role: "ADMIN",
+      passwordHash,
     },
   });
 
@@ -141,6 +153,8 @@ async function main() {
         "Draft event for teams experimenting with civic and climate prototypes.",
       status: "DRAFT",
       prizePoolKes: 250000,
+      location: "iHub Nairobi",
+      format: "HYBRID",
       organizerId: organizer.id,
     },
     create: {
@@ -150,6 +164,8 @@ async function main() {
         "Draft event for teams experimenting with civic and climate prototypes.",
       status: "DRAFT",
       prizePoolKes: 250000,
+      location: "iHub Nairobi",
+      format: "HYBRID",
       organizerId: organizer.id,
     },
   });
@@ -162,6 +178,8 @@ async function main() {
         "Build tools that help Kenyan communities track and reduce local emissions.",
       status: "PRIZE_VERIFIED",
       prizePoolKes: 500000,
+      location: "Nairobi Garage",
+      format: "IN_PERSON",
       organizerId: organizer.id,
       escrowVault: {
         upsert: {
@@ -193,6 +211,8 @@ async function main() {
         "Build tools that help Kenyan communities track and reduce local emissions.",
       status: "PRIZE_VERIFIED",
       prizePoolKes: 500000,
+      location: "Nairobi Garage",
+      format: "IN_PERSON",
       organizerId: organizer.id,
       escrowVault: {
         create: {
@@ -249,6 +269,32 @@ async function main() {
       update: {},
       create: {
         teamId: team.id,
+        userId: attendeeTwo.id,
+      },
+    }),
+    prisma.eventRegistration.upsert({
+      where: {
+        eventId_userId: {
+          eventId: verifiedEvent.id,
+          userId: attendeeOne.id,
+        },
+      },
+      update: {},
+      create: {
+        eventId: verifiedEvent.id,
+        userId: attendeeOne.id,
+      },
+    }),
+    prisma.eventRegistration.upsert({
+      where: {
+        eventId_userId: {
+          eventId: verifiedEvent.id,
+          userId: attendeeTwo.id,
+        },
+      },
+      update: {},
+      create: {
+        eventId: verifiedEvent.id,
         userId: attendeeTwo.id,
       },
     }),

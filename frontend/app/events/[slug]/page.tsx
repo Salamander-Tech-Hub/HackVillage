@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPublicEventBySlugOrId } from "@backend/services/events/public-events.service";
+import { EventRegistrationCard } from "@/components/events/EventRegistrationCard";
 
 type EventDetailPageProps = {
   params: { slug: string };
@@ -37,6 +38,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       <p>
         <strong>Ends:</strong> {event.endsAt ? new Date(event.endsAt).toLocaleString() : "TBD"}
       </p>
+      <EventRegistrationCard eventId={event.id} status={event.status} />
       <Link className="btn" href="/events">
         Back to events
       </Link>

@@ -11,7 +11,7 @@ const demoAccounts = [
   },
   {
     label: "Developer",
-    email: "dev@hackvillage.local",
+    email: "attendee1@hackvillage.local",
     description: "Find events and build your proof of work",
   },
   {
@@ -91,7 +91,7 @@ export function SignInForm({ returnTo }: SignInFormProps) {
         <div className="field-group">
           <div className="field-label-row">
             <label htmlFor="password">Password</label>
-            <span>Local demo only</span>
+            <span>Your account password</span>
           </div>
           <input
             id="password"

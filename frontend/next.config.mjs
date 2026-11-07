@@ -20,6 +20,7 @@ const nextConfig = {
   // Allow App Router pages to import from ../backend
   experimental: {
     externalDir: true,
+    instrumentationHook: true,
   },
   webpack: (config) => {
     config.resolve.alias = {
