@@ -3590,6 +3590,34 @@ button:focus-visible {
   gap: 1rem;
 }
 
+.org-record-item {
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.7rem;
+  min-width: 0;
+}
+
+.org-record-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.org-record-item code {
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+}
+
+.org-timeline {
+  counter-reset: event-step;
+}
+
+.org-timeline .org-record-item {
+  position: relative;
+}
+
 .org-record-title {
   margin: 0 0 0.4rem;
   font-size: 1rem;

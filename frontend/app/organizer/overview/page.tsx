@@ -2,14 +2,61 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { getOrganizerOverview, OrganizerApiError } from "@/lib/organizerApi";
-import type { OrganizerOverview } from "@/lib/types";
+import {
+  getEventPayouts,
+  getMyEvents,
+  getOrganizerOverview,
+  OrganizerApiError,
+  type OrganizerPayout,
+} from "@/lib/organizerApi";
+import type { OrganizerEvent, OrganizerOverview } from "@/lib/types";
 import { OrganizerEmptyState } from "@/components/organizer/OrganizerEmptyState";
+
+type AttentionItem = {
+  event: OrganizerEvent;
+  kind: "deposit" | "judging" | "payout";
+  detail: string;
+};
 
 type OverviewState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; data: OrganizerOverview };
+  | { kind: "ready"; data: OrganizerOverview; attention: AttentionItem[] };
+
+async function buildNeedsAttention(events: OrganizerEvent[]): Promise<AttentionItem[]> {
+  const items: AttentionItem[] = events.flatMap((event) => {
+    if (event.status === "PENDING_ESCROW") {
+      return [{ event, kind: "deposit" as const, detail: "Prize deposit needs confirmation." }];
+    }
+    if (event.status === "JUDGING") {
+      return [{ event, kind: "judging" as const, detail: "Judging is in progress." }];
+    }
+    return [];
+  });
+
+  const closedEvents = events.filter((event) => event.status === "CLOSED");
+  const payoutChecks = await Promise.all(
+    closedEvents.map(async (event): Promise<AttentionItem | null> => {
+      try {
+        const payouts = await getEventPayouts(event.id);
+        const incomplete = payouts.filter((payout: OrganizerPayout) => payout.status !== "SUCCESS");
+        if (incomplete.length === 0 && payouts.length > 0) return null;
+
+        const failed = incomplete.filter((payout) => payout.status === "FAILED").length;
+        const detail = payouts.length === 0
+          ? "Winner payouts have not been started."
+          : failed > 0
+            ? `${failed} payout${failed === 1 ? "" : "s"} failed and need retry.`
+            : `${incomplete.length} payout${incomplete.length === 1 ? "" : "s"} awaiting completion.`;
+        return { event, kind: "payout", detail };
+      } catch {
+        return { event, kind: "payout", detail: "Payout status could not be checked." };
+      }
+    }),
+  );
+
+  return [...items, ...payoutChecks.filter((item): item is AttentionItem => item !== null)];
+}
 
 export default function OrganizerOverviewPage() {
   const [state, setState] = useState<OverviewState>({ kind: "loading" });
@@ -17,8 +64,9 @@ export default function OrganizerOverviewPage() {
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
-      const data = await getOrganizerOverview();
-      setState({ kind: "ready", data });
+      const [data, eventList] = await Promise.all([getOrganizerOverview(), getMyEvents()]);
+      const attention = await buildNeedsAttention(eventList.events);
+      setState({ kind: "ready", data, attention });
     } catch (error) {
       const message =
         error instanceof OrganizerApiError
@@ -38,17 +86,11 @@ export default function OrganizerOverviewPage() {
         <div>
           <p className="brand-sm">Organizer</p>
           <h1 className="dashboard-title">Overview</h1>
-          <p className="lede">
-            Track event performance and rollout readiness at a glance.
-          </p>
+          <p className="lede">Track event performance and rollout readiness at a glance.</p>
         </div>
         <div className="dashboard-header-actions">
-          <Link className="btn" href="/organizer/events">
-            View all events
-          </Link>
-          <Link className="btn primary" href="/organizer/events/new">
-            Create event
-          </Link>
+          <Link className="btn" href="/organizer/events">View all events</Link>
+          <Link className="btn primary" href="/organizer/events/new">Create event</Link>
         </div>
       </header>
 
@@ -67,9 +109,7 @@ export default function OrganizerOverviewPage() {
         <div className="banner banner-warn" role="alert">
           <strong>Could not load overview.</strong> {state.message}
           <div className="org-inline-actions">
-            <button type="button" className="btn" onClick={() => void load()}>
-              Retry
-            </button>
+            <button type="button" className="btn" onClick={() => void load()}>Retry</button>
           </div>
         </div>
       ) : null}
@@ -83,14 +123,46 @@ export default function OrganizerOverviewPage() {
       ) : null}
 
       {state.kind === "ready" && state.data.totalEvents > 0 ? (
-        <section className="kpi-grid" aria-label="Overview statistics">
-          <Kpi label="Total events" value={state.data.totalEvents} />
-          <Kpi label="Draft events" value={state.data.draftEvents} />
-          <Kpi label="Live events" value={state.data.liveEvents} />
-          <Kpi label="Prize verified" value={state.data.prizeVerifiedEvents} />
-          <Kpi label="Completed" value={state.data.completedEvents} />
-          <Kpi label="Registrations" value={state.data.totalRegistrations} />
-        </section>
+        <>
+          <section className="kpi-grid" aria-label="Overview statistics">
+            <Kpi label="Total events" value={state.data.totalEvents} />
+            <Kpi label="Draft events" value={state.data.draftEvents} />
+            <Kpi label="Live events" value={state.data.liveEvents} />
+            <Kpi label="Prize verified" value={state.data.prizeVerifiedEvents} />
+            <Kpi label="Completed" value={state.data.completedEvents} />
+            <Kpi label="Registrations" value={state.data.totalRegistrations} />
+          </section>
+
+          <section className="org-detail-card" aria-labelledby="needs-attention-title">
+            <header className="org-detail-header">
+              <div>
+                <p className="brand-sm">Follow-up</p>
+                <h2 className="judging-title" id="needs-attention-title">Needs attention</h2>
+                <p className="muted small">Events with a deposit, judging, or payout step still in progress.</p>
+              </div>
+              <span className="pill pill-warn">{state.attention.length} open</span>
+            </header>
+
+            {state.attention.length === 0 ? (
+              <p className="muted">Nothing needs attention right now. Your event records are up to date.</p>
+            ) : (
+              <ul className="org-record-list">
+                {state.attention.map((item) => (
+                  <li key={`${item.event.id}-${item.kind}`} className="org-record-item">
+                    <div className="org-record-row">
+                      <strong>{item.event.title}</strong>
+                      <span className="pill pill-warn">{item.kind === "deposit" ? "Deposit" : item.kind === "judging" ? "Judging" : "Payouts"}</span>
+                    </div>
+                    <p className="muted small">{item.detail}</p>
+                    <Link className="ledger-link" href={`/organizer/events/${encodeURIComponent(item.event.id)}`}>
+                      Open event record →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
       ) : null}
     </section>
   );

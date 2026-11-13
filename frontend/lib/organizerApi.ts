@@ -519,3 +519,20 @@ function toEscrowState(value: unknown): EscrowState {
   }
   return "LOCKED_ERROR";
 }
+
+export async function retryEventPayout(eventId: string, payoutId: string) {
+  const response = await fetch(
+    `/api/events/${encodeURIComponent(eventId)}/payouts/${encodeURIComponent(payoutId)}/retry`,
+    {
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+    },
+  );
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return (await response.json()) as {
+    payout: { id: string; phase: string; status: string; amountKes: number; transferCode: string };
+  };
+}
