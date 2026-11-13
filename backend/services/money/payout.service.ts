@@ -140,10 +140,6 @@ export async function runPayoutPhase(input: {
       );
     }
 
-    if (!recipient.paystackRecipientCode) {
-      throw new MoneyError("PRECONDITION_FAILED", "Every winning team needs a registered Paystack payout recipient before funds can move.");
-    }
-
     const legacyKey = event.id + ":" + input.phase + ":" + submission.id;
     const generatedReference = payoutTransferReference(event.id, input.phase, submission.id);
     const existing = await prisma.payout.findFirst({
