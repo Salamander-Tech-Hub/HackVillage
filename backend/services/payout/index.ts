@@ -8,7 +8,7 @@ export type DisburseInput = {
   amountKes: number;
   recipient: {
     type: "mpesa" | "bank";
-    accountRef: string;
+    recipientCode: string;
     name: string;
   };
   reason: "INSTANT_50" | "MILESTONE_50";
@@ -35,7 +35,7 @@ export async function disburse(input: DisburseInput): Promise<DisburseResult> {
     const client = createPaystackClient();
     const transfer = await client.initiateTransfer({
       amountKes: input.amountKes,
-      recipientCode: input.recipient.accountRef,
+      recipientCode: input.recipient.recipientCode,
       reference: input.idempotencyKey,
       reason: input.reason,
     });
