@@ -1,8 +1,14 @@
+import { createHash } from "node:crypto";
 import { prisma } from "@backend/lib/db";
 import { createPaystackClient } from "@backend/lib/paystack";
 import { writeLedgerEntry } from "@backend/services/money/ledger.service";
 import { MoneyError, splitPrizePool } from "@backend/services/money/money";
 import { disburse } from "@backend/services/payout";
+
+function payoutTransferReference(eventId: string, phase: "INSTANT_50" | "MILESTONE_50", submissionId: string): string {
+  const key = eventId + ":" + phase + ":" + submissionId;
+  return "hv_" + createHash("sha256").update(key).digest("hex").slice(0, 40);
+}
 
 export async function listEventPayouts(input: {
   eventId: string;
@@ -135,11 +141,21 @@ export async function runPayoutPhase(input: {
       );
     }
 
-    const idempotencyKey = `${event.id}:${input.phase}:${submission.id}`;
-    const existing = await prisma.payout.findUnique({ where: { idempotencyKey } });
+    if (!recipient.paystackRecipientCode) {
+      throw new MoneyError("PRECONDITION_FAILED", "Every winning team needs a registered Paystack payout recipient before funds can move.");
+    }
+
+    const legacyKey = event.id + ":" + input.phase + ":" + submission.id;
+    const idempotencyKey = payoutTransferReference(event.id, input.phase, submission.id);
+    const existing = await prisma.payout.findFirst({
+      where: { OR: [{ idempotencyKey }, { idempotencyKey: legacyKey }] },
+    });
     if (existing?.status === "SUCCESS") {
       results.push(existing);
       continue;
+    }
+    if (existing && existing.idempotencyKey !== idempotencyKey) {
+      await prisma.payout.update({ where: { id: existing.id }, data: { idempotencyKey } });
     }
 
     const transfer = await disburse({
@@ -147,7 +163,7 @@ export async function runPayoutPhase(input: {
       amountKes,
       recipient: {
         type: recipient.method === "BANK" ? "bank" : "mpesa",
-        accountRef: recipient.accountRef,
+        recipientCode: recipient.paystackRecipientCode,
         name: recipient.accountName,
       },
       reason: input.phase,
@@ -170,13 +186,34 @@ export async function runPayoutPhase(input: {
       continue;
     }
 
-    const ledger = await writeLedgerEntry({
-      escrowVaultId: event.escrowVault.id,
-      eventId: event.id,
-      kind: input.phase,
-      amountKes,
-      metadata: { submissionId: submission.id },
+    const pending = await prisma.payout.upsert({
+      where: { idempotencyKey },
+      create: {
+        escrowVaultId: event.escrowVault.id,
+        submissionId: submission.id,
+        phase: input.phase,
+        amountKes,
+        idempotencyKey,
+        paystackTransferCode: transfer.transferCode,
+        status: "PENDING",
+      },
+      update: { paystackTransferCode: transfer.transferCode, status: "PENDING" },
     });
+
+    let ledger;
+    try {
+      ledger = await writeLedgerEntry({
+        escrowVaultId: event.escrowVault.id,
+        eventId: event.id,
+        kind: input.phase,
+        amountKes,
+        metadata: { submissionId: submission.id },
+      });
+    } catch {
+      // The transfer was accepted; do not mark it retryable as FAILED.
+      results.push(pending);
+      continue;
+    }
 
     const saved = await prisma.payout.upsert({
       where: { idempotencyKey },
@@ -256,8 +293,8 @@ export async function retryPayout(payoutId: string) {
   }
 
   const recipient = payout.submission?.team.members[0]?.user.payoutRecipients[0];
-  if (!recipient?.accountRef) {
-    throw new MoneyError("PRECONDITION_FAILED", "A valid payout recipient is required before retrying.");
+  if (!recipient?.paystackRecipientCode) {
+    throw new MoneyError("PRECONDITION_FAILED", "A registered Paystack payout recipient is required before retrying.");
   }
 
   const claimed = await prisma.payout.updateMany({
@@ -268,12 +305,21 @@ export async function retryPayout(payoutId: string) {
     throw new MoneyError("PRECONDITION_FAILED", "This payout is already being processed. Refresh and try again.");
   }
 
+  const safeReference = payoutTransferReference(
+    payout.escrowVault.event.id,
+    payout.phase,
+    payout.submissionId ?? payout.id,
+  );
+  if (payout.idempotencyKey !== safeReference) {
+    await prisma.payout.update({ where: { id: payout.id }, data: { idempotencyKey: safeReference } });
+  }
+
   const transfer = await disburse({
-    idempotencyKey: payout.idempotencyKey,
+    idempotencyKey: safeReference,
     amountKes: Number(payout.amountKes),
     recipient: {
       type: recipient.method === "BANK" ? "bank" : "mpesa",
-      accountRef: recipient.accountRef,
+      recipientCode: recipient.paystackRecipientCode,
       name: recipient.accountName,
     },
     reason: payout.phase,
@@ -296,12 +342,12 @@ export async function retryPayout(payoutId: string) {
       amountKes: Number(payout.amountKes),
       metadata: { submissionId: payout.submissionId ?? "" },
     });
-  } catch (error) {
+  } catch {
     await prisma.payout.update({
       where: { id: payout.id },
-      data: { status: "FAILED" },
+      data: { status: "PENDING", paystackTransferCode: transfer.transferCode },
     });
-    throw error;
+    throw new MoneyError("PRECONDITION_FAILED", "The transfer was accepted but its ledger entry could not be recorded. The payout was left pending to prevent a duplicate transfer.");
   }
 
   const updated = await prisma.payout.update({
