@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@backend/lib/db";
-import { createPaystackClient } from "@backend/lib/paystack";
 import { writeLedgerEntry } from "@backend/services/money/ledger.service";
 import { MoneyError, splitPrizePool } from "@backend/services/money/money";
 import { disburse } from "@backend/services/payout";
@@ -305,17 +304,9 @@ export async function retryPayout(payoutId: string) {
     throw new MoneyError("PRECONDITION_FAILED", "This payout is already being processed. Refresh and try again.");
   }
 
-  const safeReference = payoutTransferReference(
-    payout.escrowVault.event.id,
-    payout.phase,
-    payout.submissionId ?? payout.id,
-  );
-  if (payout.idempotencyKey !== safeReference) {
-    await prisma.payout.update({ where: { id: payout.id }, data: { idempotencyKey: safeReference } });
-  }
-
+  // Reuse the original reference on retries to avoid duplicate transfers if Paystack accepted the first request but its response was lost.
   const transfer = await disburse({
-    idempotencyKey: safeReference,
+    idempotencyKey: payout.idempotencyKey,
     amountKes: Number(payout.amountKes),
     recipient: {
       type: recipient.method === "BANK" ? "bank" : "mpesa",
