@@ -145,17 +145,17 @@ export async function runPayoutPhase(input: {
     }
 
     const legacyKey = event.id + ":" + input.phase + ":" + submission.id;
-    const idempotencyKey = payoutTransferReference(event.id, input.phase, submission.id);
+    const generatedReference = payoutTransferReference(event.id, input.phase, submission.id);
     const existing = await prisma.payout.findFirst({
-      where: { OR: [{ idempotencyKey }, { idempotencyKey: legacyKey }] },
+      where: { OR: [{ idempotencyKey: generatedReference }, { idempotencyKey: legacyKey }] },
     });
     if (existing?.status === "SUCCESS") {
       results.push(existing);
       continue;
     }
-    if (existing && existing.idempotencyKey !== idempotencyKey) {
-      await prisma.payout.update({ where: { id: existing.id }, data: { idempotencyKey } });
-    }
+    // Keep an existing reference stable: a previous transfer may have reached
+    // Paystack even if the caller did not receive its response.
+    const idempotencyKey = existing?.idempotencyKey ?? generatedReference;
 
     const transfer = await disburse({
       idempotencyKey,
