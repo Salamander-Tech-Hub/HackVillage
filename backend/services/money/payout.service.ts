@@ -253,11 +253,39 @@ export async function retryPayout(payoutId: string) {
     reason: payout.phase,
   });
 
-  return prisma.payout.update({
+  const ledger = await writeLedgerEntry({
+    escrowVaultId: payout.escrowVaultId,
+    eventId: payout.escrowVault.event.id,
+    kind: payout.phase,
+    amountKes: Number(payout.amountKes),
+    metadata: { submissionId: payout.submissionId },
+  });
+
+  const updated = await prisma.payout.update({
     where: { id: payout.id },
     data: {
       status: "SUCCESS",
       paystackTransferCode: transfer.transferCode,
+      ledgerTxHash: ledger.txHash,
     },
   });
+
+  const phasePayouts = await prisma.payout.findMany({
+    where: {
+      escrowVaultId: payout.escrowVaultId,
+      phase: payout.phase,
+    },
+    select: { status: true },
+  });
+
+  if (phasePayouts.length > 0 && phasePayouts.every((row) => row.status === "SUCCESS")) {
+    await prisma.escrowVault.update({
+      where: { id: payout.escrowVaultId },
+      data: {
+        state: payout.phase === "INSTANT_50" ? "PARTIAL_RELEASED" : "FULLY_RELEASED",
+      },
+    });
+  }
+
+  return updated;
 }
