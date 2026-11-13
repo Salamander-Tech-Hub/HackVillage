@@ -24,36 +24,38 @@ type OverviewState =
   | { kind: "ready"; data: OrganizerOverview; attention: AttentionItem[] };
 
 async function buildNeedsAttention(events: OrganizerEvent[]): Promise<AttentionItem[]> {
-  const items: AttentionItem[] = [];
-
-  for (const event of events) {
+  const items: AttentionItem[] = events.flatMap((event) => {
     if (event.status === "PENDING_ESCROW") {
-      items.push({ event, kind: "deposit", detail: "Prize deposit needs confirmation." });
-    } else if (event.status === "JUDGING") {
-      items.push({ event, kind: "judging", detail: "Judging is in progress." });
-    } else if (event.status === "CLOSED") {
+      return [{ event, kind: "deposit" as const, detail: "Prize deposit needs confirmation." }];
+    }
+    if (event.status === "JUDGING") {
+      return [{ event, kind: "judging" as const, detail: "Judging is in progress." }];
+    }
+    return [];
+  });
+
+  const closedEvents = events.filter((event) => event.status === "CLOSED");
+  const payoutChecks = await Promise.all(
+    closedEvents.map(async (event): Promise<AttentionItem | null> => {
       try {
         const payouts = await getEventPayouts(event.id);
         const incomplete = payouts.filter((payout: OrganizerPayout) => payout.status !== "SUCCESS");
-        if (incomplete.length > 0) {
-          const failed = incomplete.filter((payout) => payout.status === "FAILED").length;
-          items.push({
-            event,
-            kind: "payout",
-            detail: failed > 0
-              ? `${failed} payout${failed === 1 ? "" : "s"} failed and need retry.`
-              : `${incomplete.length} payout${incomplete.length === 1 ? "" : "s"} awaiting completion.`,
-          });
-        } else if (payouts.length === 0) {
-          items.push({ event, kind: "payout", detail: "Winner payouts have not been started." });
-        }
-      } catch {
-        items.push({ event, kind: "payout", detail: "Payout status could not be checked." });
-      }
-    }
-  }
+        if (incomplete.length === 0 && payouts.length > 0) return null;
 
-  return items;
+        const failed = incomplete.filter((payout) => payout.status === "FAILED").length;
+        const detail = payouts.length === 0
+          ? "Winner payouts have not been started."
+          : failed > 0
+            ? `${failed} payout${failed === 1 ? "" : "s"} failed and need retry.`
+            : `${incomplete.length} payout${incomplete.length === 1 ? "" : "s"} awaiting completion.`;
+        return { event, kind: "payout", detail };
+      } catch {
+        return { event, kind: "payout", detail: "Payout status could not be checked." };
+      }
+    }),
+  );
+
+  return [...items, ...payoutChecks.filter((item): item is AttentionItem => item !== null)];
 }
 
 export default function OrganizerOverviewPage() {
